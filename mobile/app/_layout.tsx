@@ -36,6 +36,10 @@ export default function RootLayout() {
     JetBrainsMono_700Bold,
   });
 
+  // Mount the offline-queue drainer once for the whole app: it listens for connectivity
+  // returning and auto-processes any scans captured in a dead zone (BUILD_PROMPT §13).
+  const { justResolved } = useOfflineQueueProcessor();
+
   useEffect(() => {
     void initAnalytics();
     void initMonitoring();
@@ -62,6 +66,7 @@ export default function RootLayout() {
         <Stack.Screen name="result/[scanId]" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
       </Stack>
+      <QueueResolvedToast resolvedCount={justResolved} />
     </View>
   );
 }

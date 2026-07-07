@@ -29,10 +29,12 @@ export const Colors = {
   shadow: 'rgba(33,29,24,0.12)',
 } as const;
 
+// Verdict presentation tokens. No emoji field by design — PLAYBOOK 1.1 bans emoji-as-UI;
+// FLIP/MAYBE/SKIP read as a stamped word mark (see VerdictStamp), never an emoji.
 export const Verdict = {
-  flip: { fg: Colors.flip, bg: Colors.flipSoft, label: 'FLIP', emoji: '🔥' },
-  maybe: { fg: Colors.maybe, bg: Colors.maybeSoft, label: 'MAYBE', emoji: '' },
-  skip: { fg: Colors.skip, bg: Colors.skipSoft, label: 'SKIP', emoji: '' },
+  flip: { fg: Colors.flip, bg: Colors.flipSoft, label: 'FLIP' },
+  maybe: { fg: Colors.maybe, bg: Colors.maybeSoft, label: 'MAYBE' },
+  skip: { fg: Colors.skip, bg: Colors.skipSoft, label: 'SKIP' },
 } as const;
 
 export const Fonts = {
