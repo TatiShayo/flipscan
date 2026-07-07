@@ -12,7 +12,8 @@ interface SettingsState {
   thriftFrequency: string | null; // "How much do you thrift per month?" answer, for personalization
   hasSeenReviewPrompt: boolean;
   setDefaultPlatform: (p: Platform) => void;
-  completeOnboarding: (thriftFrequency: string | null) => void;
+  setThriftFrequency: (thriftFrequency: string | null) => void;
+  completeOnboarding: () => void;
   markReviewPromptShown: () => void;
 }
 
@@ -24,8 +25,8 @@ export const useSettingsStore = create<SettingsState>()(
       thriftFrequency: null,
       hasSeenReviewPrompt: false,
       setDefaultPlatform: (p) => set({ defaultPlatform: p }),
-      completeOnboarding: (thriftFrequency) =>
-        set({ onboardingCompleted: true, thriftFrequency }),
+      setThriftFrequency: (thriftFrequency) => set({ thriftFrequency }),
+      completeOnboarding: () => set({ onboardingCompleted: true }),
       markReviewPromptShown: () => set({ hasSeenReviewPrompt: true }),
     }),
     {
