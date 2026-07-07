@@ -2,7 +2,7 @@
 // (set by app/scanning.tsx) rather than re-fetching by id, since this screen is only ever
 // reached immediately after a scan completes; reopening an OLD scan from history routes
 // here too but falls back to the history item itself (see historyFallback below).
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, TextInput } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -66,20 +66,28 @@ export default function ResultScreen() {
     };
   }, []);
 
-  // buyPrice/breakdown/verdict are computed below (after the not-found guard, since they
-  // depend on `comps`/`identified`); this ref lets the review-prompt effect above read the
-  // latest values without violating rules-of-hooks by being declared after an early return.
-  const reviewPromptInputRef = useRef<{ netProfit: number; verdict: string } | null>(null);
+  // Computed even when identified/comps are missing (safe zero-value fallback) so every
+  // hook below can stay above the not-found early return, per rules-of-hooks.
+  const buyPrice = buyPriceInput.trim() === '' ? null : Math.max(0, Number(buyPriceInput) || 0);
+  const breakdown = computeProfit({
+    estimatedSold: comps?.estimated_sold ?? 0,
+    category: identified?.category ?? 'other',
+    condition,
+    buyPrice,
+    platform,
+  });
+  const verdict = verdictFor(breakdown, buyPrice != null);
+  const showConfetti = verdict === 'flip' && breakdown.netProfit >= 50;
 
+  // Peak-happiness moment: first FLIP >=$50 gets the one-time store review prompt, fired a
+  // beat after the verdict stamp lands so it doesn't compete with the reveal animation.
   useEffect(() => {
     if (revealStage < 2 || !isFresh) return;
     const t = setTimeout(() => {
-      const input = reviewPromptInputRef.current;
-      if (!input) return;
-      maybePromptForReview(input.netProfit, input.verdict).catch(() => {});
+      maybePromptForReview(breakdown.netProfit, verdict).catch(() => {});
     }, 1200);
     return () => clearTimeout(t);
-  }, [revealStage, isFresh]);
+  }, [revealStage, isFresh, breakdown.netProfit, verdict]);
 
   if (!identified || !comps) {
     return (
@@ -91,18 +99,6 @@ export default function ResultScreen() {
       </SafeAreaView>
     );
   }
-
-  const buyPrice = buyPriceInput.trim() === '' ? null : Math.max(0, Number(buyPriceInput) || 0);
-  const breakdown = computeProfit({
-    estimatedSold: comps.estimated_sold,
-    category: identified.category,
-    condition,
-    buyPrice,
-    platform,
-  });
-  const verdict = verdictFor(breakdown, buyPrice != null);
-  const showConfetti = verdict === 'flip' && breakdown.netProfit >= 50;
-  reviewPromptInputRef.current = { netProfit: breakdown.netProfit, verdict };
 
   const commitAdjustment = (nextCondition: ConditionGrade, nextBuyPriceRaw: string) => {
     if (!scanId) return;
@@ -164,8 +160,13 @@ export default function ResultScreen() {
           {identified.needs_better_photo && identified.photo_tip ? (
             <View style={styles.tipBox}>
               <Text style={styles.tipText}>{identified.photo_tip}</Text>
-              <Pressable onPress={() => router.replace('/camera')}>
-                <Text style={styles.tipAction}>Snap the tag</Text>
+              <Pressable
+                onPress={() => {
+                  track('scan_started', { retake: 'tag_photo' });
+                  router.push({ pathname: '/camera', params: { addTag: '1' } });
+                }}
+              >
+                <Text style={styles.tipAction}>Snap the tag for a better match</Text>
               </Pressable>
             </View>
           ) : null}

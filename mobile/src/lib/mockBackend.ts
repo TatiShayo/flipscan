@@ -146,12 +146,25 @@ export async function runMockScan(args: ScanArgs): Promise<ScanOutcome> {
 
   await delay(700); // identifying
 
-  const identified =
+  let identified =
     args.mockVariant === 'low_conf'
       ? FIXTURE_IDENTIFIED_LOW_CONF
       : args.mode === 'barcode' || args.mockVariant === 'barcode'
         ? FIXTURE_IDENTIFIED_BARCODE
         : FIXTURE_IDENTIFIED;
+
+  // Multi-photo rescan (BUILD_PROMPT §11): a second (tag/label) photo demonstrably improves
+  // the ID — mirrors what the real Claude call would do with a maker's-mark close-up.
+  if (args.images.length > 1 && identified.needs_better_photo) {
+    identified = IdentifiedSchema.parse({
+      ...identified,
+      name: 'Patagonia Synchilla Snap-T Fleece Pullover',
+      brand: 'Patagonia',
+      confidence: 0.88,
+      needs_better_photo: false,
+      photo_tip: null,
+    });
+  }
 
   await delay(900); // checking listings
 

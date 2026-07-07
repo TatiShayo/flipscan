@@ -110,7 +110,7 @@ export default function ScanningScreen() {
         status: 'complete',
       };
       addHistoryItem(historyItem);
-      setResult(result, imageUri);
+      setResult(result, imageUri, pending.images);
       track('scan_completed', {
         verdict: result.verdict,
         confidence: result.identified.confidence,

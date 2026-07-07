@@ -3,7 +3,7 @@
 // -> downscale -> push into the scan-progress screen with the prepared image as a param.
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -24,11 +24,19 @@ import { useCapturedImageStore } from '@/store/captureStore';
 type Mode = 'photo' | 'barcode';
 
 export default function CameraScreen() {
+  // ?addTag=1: rescan mode (BUILD_PROMPT §11 "Snap the tag"). Reuses the item photo(s)
+  // from the scan that just completed and appends this new close-up rather than starting
+  // a fresh single-photo scan — same underlying /scan request, just images.length === 2.
+  const { addTag } = useLocalSearchParams<{ addTag?: string }>();
+  const isTagAdd = addTag === '1';
+
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<Mode>('photo');
   const [capturing, setCapturing] = useState(false);
   const cameraRef = useRef<CameraView>(null);
   const setCaptured = useCapturedImageStore((s) => s.setCaptured);
+  const lastImages = useCapturedImageStore((s) => s.lastImages);
+  const lastMockVariant = useCapturedImageStore((s) => s.lastResult?.identified.needs_better_photo ? 'low_conf' as const : undefined);
 
   // NOTE: true subject-centering detection would need on-device object detection, which
   // isn't wired up yet (NEEDS HUMAN / fast-follow). The corners pulse continuously as a
@@ -62,12 +70,15 @@ export default function CameraScreen() {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.8, skipProcessing: true });
       if (!photo?.uri) throw new Error('capture failed');
       const prepared = await prepareImage(photo.uri);
-      setCaptured({ images: [prepared], mode: 'photo' });
+      // Tag-add rescan: keep the original item photo as [0], tag close-up as [1] — the
+      // vision provider treats index 1 as a maker's-mark/label close-up (schema caps at 2).
+      const images = isTagAdd && lastImages.length > 0 ? [lastImages[0], prepared] : [prepared];
+      setCaptured({ images, mode: 'photo', mockVariant: isTagAdd ? undefined : lastMockVariant });
       router.replace('/scanning');
     } catch {
       setCapturing(false);
     }
-  }, [capturing, setCaptured]);
+  }, [capturing, setCaptured, isTagAdd, lastImages, lastMockVariant]);
 
   const handleBarcode = useCallback(
     (result: BarcodeScanningResult) => {
@@ -119,23 +130,25 @@ export default function CameraScreen() {
           >
             <Icon name="x" size={22} color={Colors.white} />
           </Pressable>
-          <View style={styles.modeToggle}>
-            <Pressable
-              onPress={() => setMode('photo')}
-              style={[styles.modeOption, mode === 'photo' && styles.modeOptionActive]}
-            >
-              <Text style={[styles.modeLabel, mode === 'photo' && styles.modeLabelActive]}>Photo</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setMode('barcode')}
-              style={[styles.modeOption, mode === 'barcode' && styles.modeOptionActive]}
-            >
-              <Text style={[styles.modeLabel, mode === 'barcode' && styles.modeLabelActive]}>Barcode</Text>
-            </Pressable>
-          </View>
+          {!isTagAdd && (
+            <View style={styles.modeToggle}>
+              <Pressable
+                onPress={() => setMode('photo')}
+                style={[styles.modeOption, mode === 'photo' && styles.modeOptionActive]}
+              >
+                <Text style={[styles.modeLabel, mode === 'photo' && styles.modeLabelActive]}>Photo</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setMode('barcode')}
+                style={[styles.modeOption, mode === 'barcode' && styles.modeOptionActive]}
+              >
+                <Text style={[styles.modeLabel, mode === 'barcode' && styles.modeLabelActive]}>Barcode</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
-        {mode === 'photo' && (
+        {(isTagAdd || mode === 'photo') && (
           <View style={styles.frameWrap} pointerEvents="none">
             <Animated.View style={[styles.corner, styles.cornerTL, cornerStyle]} />
             <Animated.View style={[styles.corner, styles.cornerTR, cornerStyle]} />
@@ -146,9 +159,13 @@ export default function CameraScreen() {
 
         <View style={styles.bottomBar}>
           <Text style={styles.hint}>
-            {mode === 'photo' ? 'Center the item in the frame' : 'Point at the barcode'}
+            {isTagAdd
+              ? 'Center the tag or label — brand, size, care instructions'
+              : mode === 'photo'
+                ? 'Center the item in the frame'
+                : 'Point at the barcode'}
           </Text>
-          {mode === 'photo' && (
+          {(isTagAdd || mode === 'photo') && (
             <Pressable
               onPress={handleCapture}
               disabled={capturing}
