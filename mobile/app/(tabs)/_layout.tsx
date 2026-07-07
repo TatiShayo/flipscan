@@ -2,11 +2,12 @@
 // Settings. Receipt-paper tab bar per the "appraiser's field tool" art direction —
 // warm paper surface, hairline top border, ink/forest active state.
 import { Tabs } from 'expo-router';
+import type { ColorValue } from 'react-native';
 import { Colors, Fonts } from '@/constants/theme';
 import { Icon, type IconName } from '@/components/Icon';
 
 function TabIcon(name: IconName) {
-  return ({ color }: { color: string }) => <Icon name={name} color={color} size={22} />;
+  return ({ color }: { color: ColorValue }) => <Icon name={name} color={String(color)} size={22} />;
 }
 
 export default function TabsLayout() {
