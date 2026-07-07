@@ -2,7 +2,7 @@
 // (set by app/scanning.tsx) rather than re-fetching by id, since this screen is only ever
 // reached immediately after a scan completes; reopening an OLD scan from history routes
 // here too but falls back to the history item itself (see historyFallback below).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, TextInput } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ import { computeProfit, verdictFor, PLATFORM_LABELS, type Platform } from '@/con
 import type { ConditionGrade } from '@/types/scan';
 import { track } from '@/lib/analytics';
 import { sanitizeEbayUrl } from '@/lib/url';
+import { maybePromptForReview } from '@/lib/reviewPrompt';
 import * as WebBrowser from 'expo-web-browser';
 
 const CONDITIONS: { key: ConditionGrade; label: string }[] = [
@@ -65,6 +66,21 @@ export default function ResultScreen() {
     };
   }, []);
 
+  // buyPrice/breakdown/verdict are computed below (after the not-found guard, since they
+  // depend on `comps`/`identified`); this ref lets the review-prompt effect above read the
+  // latest values without violating rules-of-hooks by being declared after an early return.
+  const reviewPromptInputRef = useRef<{ netProfit: number; verdict: string } | null>(null);
+
+  useEffect(() => {
+    if (revealStage < 2 || !isFresh) return;
+    const t = setTimeout(() => {
+      const input = reviewPromptInputRef.current;
+      if (!input) return;
+      maybePromptForReview(input.netProfit, input.verdict).catch(() => {});
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [revealStage, isFresh]);
+
   if (!identified || !comps) {
     return (
       <SafeAreaView style={styles.container}>
@@ -86,6 +102,7 @@ export default function ResultScreen() {
   });
   const verdict = verdictFor(breakdown, buyPrice != null);
   const showConfetti = verdict === 'flip' && breakdown.netProfit >= 50;
+  reviewPromptInputRef.current = { netProfit: breakdown.netProfit, verdict };
 
   const commitAdjustment = (nextCondition: ConditionGrade, nextBuyPriceRaw: string) => {
     if (!scanId) return;
