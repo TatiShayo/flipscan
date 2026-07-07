@@ -41,7 +41,7 @@ export async function initAnalytics(): Promise<void> {
     const { PostHog } = await import('posthog-react-native');
     const ph = new PostHog(ENV.posthogKey as string, { host: ENV.posthogHost });
     client = {
-      capture: (e, p) => ph.capture(e, p),
+      capture: (e, p) => ph.capture(e, stripUndefined(p)),
       identify: (id) => ph.identify(id),
     };
   } catch {
@@ -56,4 +56,15 @@ export function track(event: AnalyticsEvent, props?: Props): void {
 
 export function identify(anonId: string): void {
   client?.identify(anonId);
+}
+
+// PostHog's JsonType doesn't accept `undefined` values; drop them (rather than sending
+// nulls that weren't intended) so callers can pass optional props without casting.
+function stripUndefined(props?: Props): Record<string, string | number | boolean | null> | undefined {
+  if (!props) return undefined;
+  const out: Record<string, string | number | boolean | null> = {};
+  for (const [k, v] of Object.entries(props)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
 }
