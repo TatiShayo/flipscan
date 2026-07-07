@@ -20,7 +20,6 @@ import { Button } from '@/components/Button';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { prepareImage } from '@/lib/image';
 import { useCapturedImageStore } from '@/store/captureStore';
-import { track } from '@/lib/analytics';
 
 type Mode = 'photo' | 'barcode';
 
@@ -28,10 +27,12 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<Mode>('photo');
   const [capturing, setCapturing] = useState(false);
-  const [centered, setCentered] = useState(true);
   const cameraRef = useRef<CameraView>(null);
   const setCaptured = useCapturedImageStore((s) => s.setCaptured);
 
+  // NOTE: true subject-centering detection would need on-device object detection, which
+  // isn't wired up yet (NEEDS HUMAN / fast-follow). The corners pulse continuously as a
+  // gentler stand-in for "a subject is centered" rather than faking a detector.
   const pulse = useSharedValue(1);
   useEffect(() => {
     pulse.value = withRepeat(
@@ -44,7 +45,7 @@ export default function CameraScreen() {
     );
   }, [pulse]);
   const cornerStyle = useAnimatedStyle(() => ({
-    opacity: centered ? pulse.value : 1,
+    opacity: pulse.value,
   }));
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function CameraScreen() {
           <Icon name="camera" size={32} color={Colors.inkFaint} />
           <Text style={styles.permissionTitle}>Camera access needed</Text>
           <Text style={styles.permissionBody}>
-            FlipScan can't identify items without seeing them. Enable camera access to keep scanning.
+            FlipScan can&apos;t identify items without seeing them. Enable camera access to keep scanning.
           </Text>
           <Button title="Grant access" onPress={() => requestPermission()} />
           <Button title="Not now" variant="ghost" onPress={() => router.back()} />

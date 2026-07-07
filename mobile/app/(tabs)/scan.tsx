@@ -54,7 +54,7 @@ export default function ScanTab() {
           </View>
           <Text style={styles.heroTitle}>Ready to scan</Text>
           <Text style={styles.heroSubtitle}>
-            Center the item, snap a photo, and we'll check what it's worth in seconds.
+            Center the item, snap a photo, and we&apos;ll check what it&apos;s worth in seconds.
           </Text>
           <Button
             title="Open camera"

@@ -42,9 +42,9 @@ export default function Permission() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Why we ask</Text>
         <Text style={styles.cardBody}>
-          Every scan starts with a photo. We downscale it on your device before upload, and it's
-          deleted from our servers after 90 days — sooner if you delete your data anytime in
-          Settings.
+          Every scan starts with a photo. We downscale it on your device before upload, and
+          it&apos;s deleted from our servers after 90 days — sooner if you delete your data
+          anytime in Settings.
         </Text>
       </View>
     </OnboardingShell>

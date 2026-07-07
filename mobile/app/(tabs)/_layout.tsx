@@ -7,7 +7,11 @@ import { Colors, Fonts } from '@/constants/theme';
 import { Icon, type IconName } from '@/components/Icon';
 
 function TabIcon(name: IconName) {
-  return ({ color }: { color: ColorValue }) => <Icon name={name} color={String(color)} size={22} />;
+  function TabBarIcon({ color }: { color: ColorValue }) {
+    return <Icon name={name} color={String(color)} size={22} />;
+  }
+  TabBarIcon.displayName = `TabIcon(${name})`;
+  return TabBarIcon;
 }
 
 export default function TabsLayout() {

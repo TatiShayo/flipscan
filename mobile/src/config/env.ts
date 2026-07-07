@@ -3,19 +3,22 @@
 // secrets — never referenced from the app. Every integration degrades to a mock/no-op
 // when its key is absent so the app always runs; absences are logged under NEEDS HUMAN.
 
-function pub(key: string): string | undefined {
-  const v = process.env[key];
+// Each EXPO_PUBLIC_* reference below MUST be a static, literal `process.env.X` access —
+// Expo's build-time replacer (and eslint-plugin-expo's no-dynamic-env-var rule) only
+// inlines statically-analyzable accesses into the bundle. A helper that indexes
+// `process.env[key]` dynamically silently fails to inline in production builds.
+function nonEmpty(v: string | undefined): string | undefined {
   return v && v.length > 0 ? v : undefined;
 }
 
 export const ENV = {
-  supabaseUrl: pub('EXPO_PUBLIC_SUPABASE_URL'),
-  supabaseAnonKey: pub('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
-  posthogKey: pub('EXPO_PUBLIC_POSTHOG_KEY'),
-  posthogHost: pub('EXPO_PUBLIC_POSTHOG_HOST') ?? 'https://us.i.posthog.com',
-  sentryDsn: pub('EXPO_PUBLIC_SENTRY_DSN'),
-  revenueCatIosKey: pub('EXPO_PUBLIC_RC_IOS_KEY'),
-  revenueCatAndroidKey: pub('EXPO_PUBLIC_RC_ANDROID_KEY'),
+  supabaseUrl: nonEmpty(process.env.EXPO_PUBLIC_SUPABASE_URL),
+  supabaseAnonKey: nonEmpty(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
+  posthogKey: nonEmpty(process.env.EXPO_PUBLIC_POSTHOG_KEY),
+  posthogHost: nonEmpty(process.env.EXPO_PUBLIC_POSTHOG_HOST) ?? 'https://us.i.posthog.com',
+  sentryDsn: nonEmpty(process.env.EXPO_PUBLIC_SENTRY_DSN),
+  revenueCatIosKey: nonEmpty(process.env.EXPO_PUBLIC_RC_IOS_KEY),
+  revenueCatAndroidKey: nonEmpty(process.env.EXPO_PUBLIC_RC_ANDROID_KEY),
 } as const;
 
 // True when a given integration is fully configured; drives mock fallbacks + dev banner.

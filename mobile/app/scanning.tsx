@@ -3,7 +3,7 @@
 // reveal in app/result/[scanId].tsx). Runs the real scan request (edge fn or local mock,
 // same call site) while the staged copy plays, then hands off to the result screen.
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -16,7 +16,7 @@ import Animated, {
   FadeIn,
   FadeOut,
 } from 'react-native-reanimated';
-import { Colors, Fonts, Radius, Spacing, Type } from '@/constants/theme';
+import { Colors, Spacing, Type } from '@/constants/theme';
 import { useCapturedImageStore } from '@/store/captureStore';
 import { requestScan } from '@/lib/scanApi';
 import { deviceHash } from '@/lib/device';
