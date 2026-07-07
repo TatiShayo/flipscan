@@ -1,0 +1,12 @@
+# Supabase local/project config. `supabase functions deploy` uses the import map so the
+# _shared modules resolve zod and supabase-js identically to how jest resolves them.
+project_id = "flipscan"
+
+[functions.scan]
+verify_jwt = true
+import_map = "./functions/import_map.json"
+
+[functions.revenuecat-webhook]
+# server-to-server; auth is the RC_WEBHOOK_AUTH shared secret, not a user JWT
+verify_jwt = false
+import_map = "./functions/import_map.json"
