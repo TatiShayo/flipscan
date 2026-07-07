@@ -76,12 +76,15 @@ export default function HistoryTab() {
 }
 
 function HistoryRow({ item }: { item: ScanHistoryItem }) {
-  const v = Verdict[item.verdict];
+  const isQueued = item.status === 'queued';
+  const isFailed = item.status === 'failed';
+  const canOpen = item.status === 'complete';
   return (
     <Pressable
-      onPress={() => router.push(`/result/${item.id}`)}
-      style={styles.row}
+      onPress={() => canOpen && router.push(`/result/${item.id}`)}
+      style={[styles.row, !canOpen && styles.rowMuted]}
       accessibilityRole="button"
+      disabled={!canOpen}
     >
       {item.imageUri ? (
         <Image source={{ uri: item.imageUri }} style={styles.thumb} />
@@ -89,14 +92,31 @@ function HistoryRow({ item }: { item: ScanHistoryItem }) {
         <View style={[styles.thumb, styles.thumbPlaceholder]} />
       )}
       <View style={styles.rowBody}>
-        <Text style={styles.rowTitle} numberOfLines={1}>{item.identified.name}</Text>
-        <Text style={styles.rowMeta}>
-          {new Date(item.createdAt).toLocaleDateString()} · {item.status === 'queued' ? 'Queued' : `$${item.comps.estimated_sold.toFixed(2)} est.`}
-        </Text>
+        <Text style={styles.rowTitle} numberOfLines={1}>{item.identified?.name ?? 'Item scan'}</Text>
+        <View style={styles.rowMetaRow}>
+          {isQueued && <Icon name="wifi-off" size={12} color={Colors.inkFaint} />}
+          <Text style={styles.rowMeta}>
+            {new Date(item.createdAt).toLocaleDateString()}
+            {' · '}
+            {isQueued
+              ? 'Queued — will scan when back online'
+              : isFailed
+                ? 'Failed to process'
+                : `$${item.comps?.estimated_sold.toFixed(2)} est.`}
+          </Text>
+        </View>
       </View>
-      <View style={[styles.verdictPill, { backgroundColor: v.bg }]}>
-        <Text style={[styles.verdictPillText, { color: v.fg }]}>{v.label}</Text>
-      </View>
+      {item.verdict ? (
+        <View style={[styles.verdictPill, { backgroundColor: Verdict[item.verdict].bg }]}>
+          <Text style={[styles.verdictPillText, { color: Verdict[item.verdict].fg }]}>
+            {Verdict[item.verdict].label}
+          </Text>
+        </View>
+      ) : (
+        <View style={[styles.verdictPill, styles.verdictPillPending]}>
+          <Text style={styles.verdictPillTextPending}>{isFailed ? 'RETRY' : 'QUEUED'}</Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -138,13 +158,22 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.sm,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  rowMuted: { opacity: 0.6 },
   thumb: { width: 52, height: 52, borderRadius: Radius.sm, backgroundColor: Colors.paperEdge },
   thumbPlaceholder: {},
   rowBody: { flex: 1 },
   rowTitle: { fontFamily: Fonts.bodySemibold, fontSize: 14, color: Colors.ink },
-  rowMeta: { fontFamily: Fonts.mono, fontSize: 11, color: Colors.inkFaint, marginTop: 2 },
+  rowMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  rowMeta: { fontFamily: Fonts.mono, fontSize: 11, color: Colors.inkFaint },
   verdictPill: { paddingHorizontal: Spacing.sm, paddingVertical: 4, borderRadius: Radius.pill },
   verdictPillText: { fontFamily: Fonts.bodySemibold, fontSize: 10, letterSpacing: 0.5 },
+  verdictPillPending: { backgroundColor: Colors.paperEdge },
+  verdictPillTextPending: {
+    fontFamily: Fonts.bodySemibold,
+    fontSize: 10,
+    letterSpacing: 0.5,
+    color: Colors.inkFaint,
+  },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, padding: Spacing.xxl },
   emptyTitle: { ...Type.heading },
   emptyBody: { ...Type.bodySm, color: Colors.inkSoft, textAlign: 'center' },

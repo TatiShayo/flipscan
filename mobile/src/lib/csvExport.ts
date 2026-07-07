@@ -25,17 +25,19 @@ export function historyToCsv(items: ScanHistoryItem[]): string {
     'verdict',
     'platform',
   ];
+  // Queued/failed rows (offline queue, BUILD_PROMPT §13) haven't run the pipeline yet —
+  // export them with blank identification fields rather than dropping them from the ledger.
   const rows = items.map((item) =>
     [
       new Date(item.createdAt).toISOString().slice(0, 10),
-      item.identified.name,
-      item.identified.brand ?? '',
-      item.identified.category,
+      item.identified?.name ?? '',
+      item.identified?.brand ?? '',
+      item.identified?.category ?? '',
       item.condition,
       item.buyPrice != null ? item.buyPrice.toFixed(2) : '',
-      item.comps.estimated_sold.toFixed(2),
+      item.comps ? item.comps.estimated_sold.toFixed(2) : '',
       item.netProfit != null ? item.netProfit.toFixed(2) : '',
-      item.verdict,
+      item.verdict ?? item.status,
       item.platform,
     ]
       .map((v) => csvEscape(String(v)))

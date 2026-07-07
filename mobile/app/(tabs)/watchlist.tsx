@@ -50,7 +50,10 @@ export default function WatchlistTab() {
 }
 
 function WatchlistRow({ item, onRemove }: { item: ScanHistoryItem; onRemove: () => void }) {
-  const v = Verdict[item.verdict];
+  // Watchlisting only happens from a completed result screen, so identified/comps/verdict
+  // should always be present here — but the type is nullable (queued rows share the same
+  // shape), so fall back gracefully rather than crashing if that ever changes.
+  const v = item.verdict ? Verdict[item.verdict] : null;
   return (
     <Pressable onPress={() => router.push(`/result/${item.id}`)} style={styles.row}>
       {item.imageUri ? (
@@ -59,8 +62,10 @@ function WatchlistRow({ item, onRemove }: { item: ScanHistoryItem; onRemove: () 
         <View style={[styles.thumb, styles.thumbPlaceholder]} />
       )}
       <View style={styles.rowBody}>
-        <Text style={styles.rowTitle} numberOfLines={1}>{item.identified.name}</Text>
-        <Text style={styles.rowMeta}>${item.comps.estimated_sold.toFixed(2)} est. · {v.label}</Text>
+        <Text style={styles.rowTitle} numberOfLines={1}>{item.identified?.name ?? 'Processing…'}</Text>
+        <Text style={styles.rowMeta}>
+          {item.comps ? `$${item.comps.estimated_sold.toFixed(2)} est.` : '—'} {v ? `· ${v.label}` : ''}
+        </Text>
       </View>
       <Pressable onPress={onRemove} hitSlop={8} accessibilityLabel="Remove from watchlist">
         <Icon name="star" size={20} color={Colors.brass} />

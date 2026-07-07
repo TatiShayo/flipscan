@@ -20,6 +20,8 @@ import { Button } from '@/components/Button';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { prepareImage } from '@/lib/image';
 import { useCapturedImageStore } from '@/store/captureStore';
+import { isOffline, enqueueCapture } from '@/lib/offlineQueue';
+import { track } from '@/lib/analytics';
 
 type Mode = 'photo' | 'barcode';
 
@@ -73,7 +75,18 @@ export default function CameraScreen() {
       // Tag-add rescan: keep the original item photo as [0], tag close-up as [1] — the
       // vision provider treats index 1 as a maker's-mark/label close-up (schema caps at 2).
       const images = isTagAdd && lastImages.length > 0 ? [lastImages[0], prepared] : [prepared];
-      setCaptured({ images, mode: 'photo', mockVariant: isTagAdd ? undefined : lastMockVariant });
+      const capture = { images, mode: 'photo' as const, mockVariant: isTagAdd ? undefined : lastMockVariant };
+
+      // Offline queue (BUILD_PROMPT §13): dead zones are the norm in thrift stores. Queue
+      // instead of blocking on a network call that will just time out.
+      if (await isOffline()) {
+        enqueueCapture(capture);
+        track('scan_failed', { error: 'offline_queued' });
+        router.replace('/(tabs)/history');
+        return;
+      }
+
+      setCaptured(capture);
       router.replace('/scanning');
     } catch {
       setCapturing(false);
@@ -81,11 +94,20 @@ export default function CameraScreen() {
   }, [capturing, setCaptured, isTagAdd, lastImages, lastMockVariant]);
 
   const handleBarcode = useCallback(
-    (result: BarcodeScanningResult) => {
+    async (result: BarcodeScanningResult) => {
       if (capturing) return;
       setCapturing(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      setCaptured({ images: [], mode: 'barcode', barcode: result.data });
+      const capture = { images: [], mode: 'barcode' as const, barcode: result.data };
+
+      if (await isOffline()) {
+        enqueueCapture(capture);
+        track('scan_failed', { error: 'offline_queued' });
+        router.replace('/(tabs)/history');
+        return;
+      }
+
+      setCaptured(capture);
       router.replace('/scanning');
     },
     [capturing, setCaptured],

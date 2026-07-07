@@ -20,6 +20,8 @@ import { Colors } from '@/constants/theme';
 import { initAnalytics, track } from '@/lib/analytics';
 import { initMonitoring } from '@/lib/monitoring';
 import { ensureAnonSession } from '@/lib/supabase';
+import { useOfflineQueueProcessor } from '@/lib/offlineQueue';
+import { QueueResolvedToast } from '@/components/QueueResolvedToast';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 

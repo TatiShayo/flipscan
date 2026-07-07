@@ -95,16 +95,27 @@ export type ScanError = z.infer<typeof ScanErrorSchema>;
 
 // ---- Local-only additions (not sent over the wire) ----
 // A scan as persisted in local history / the mock backend — result + client-local fields.
+// `queued` items (offline capture, BUILD_PROMPT §13) haven't run the pipeline yet, so
+// identified/comps/verdict are absent until the queue processor resolves them.
 export interface ScanHistoryItem {
   id: string;
   createdAt: string; // ISO
   imageUri: string | null;
-  identified: Identified;
-  comps: Comps;
-  verdict: Verdict;
+  identified: Identified | null;
+  comps: Comps | null;
+  verdict: Verdict | null;
   condition: ConditionGrade;
   buyPrice: number | null;
   platform: string;
   netProfit: number | null;
   status: 'complete' | 'queued' | 'failed';
+  // Present only while status === 'queued': the exact request payload needed to run the
+  // scan once connectivity returns. base64 images kept here too — same size class as an
+  // already-persisted result photo, and queue depth is inherently small (one offline trip).
+  queuedPayload?: {
+    images: string[]; // base64 JPEGs
+    mode: 'photo' | 'barcode';
+    barcode?: string;
+    mockVariant?: 'low_conf' | 'barcode';
+  };
 }
