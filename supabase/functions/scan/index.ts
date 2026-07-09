@@ -16,9 +16,8 @@ import { ScanRequestSchema, IdentifiedSchema, type ScanResult } from '../_shared
 import { CORS_HEADERS, ERROR_STATUS, errorResponse, json } from '../_shared/http.ts';
 import { adminClient, getUserIdFromRequest } from '../_shared/supabase_admin.ts';
 import {
-  DAILY_SCAN_LIMIT,
   FREE_SCAN_LIMIT,
-  MONTHLY_BUDGET_USD,
+  checkUsageLimits,
   epnCampaignId,
   isAiKilled,
   makeCompsProvider,
@@ -72,11 +71,16 @@ Deno.serve(async (req: Request) => {
     });
     if (usageErr) throw usageErr;
     const u = firstRow(usage);
-    if (u && u.scans_today > DAILY_SCAN_LIMIT) {
-      return fail('rate_limited', "You've hit today's scan limit. Back tomorrow.");
-    }
-    if (u && Number(u.month_cost_usd) > MONTHLY_BUDGET_USD) {
-      return fail('budget_capped', "You've reached this month's scan quota.");
+    if (u) {
+      const check = checkUsageLimits({
+        scansToday: u.scans_today,
+        monthCostUsd: Number(u.month_cost_usd),
+      });
+      if (!check.allowed) {
+        return check.reason === 'rate_limited'
+          ? fail('rate_limited', "You've hit today's scan limit. Back tomorrow.")
+          : fail('budget_capped', "You've reached this month's scan quota.");
+      }
     }
 
     // 5. metering — consume a credit atomically

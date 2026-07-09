@@ -16,9 +16,10 @@ module.exports = [
     ],
   },
   {
-    // Root-level CommonJS config files (jest.config.js etc.) run under plain Node, not the
-    // app's ESM/RN environment — they need node/CommonJS globals (__dirname, module, require).
-    files: ['jest.config.js', 'babel.config.js', 'metro.config.js'],
+    // Root-level CommonJS config files (jest.config.js etc.) and one-off Node scripts run
+    // under plain Node, not the app's ESM/RN environment — they need node/CommonJS globals
+    // (__dirname, module, require).
+    files: ['jest.config.js', 'babel.config.js', 'metro.config.js', 'scripts/**/*.js'],
     languageOptions: {
       sourceType: 'commonjs',
       globals: globals.node,

@@ -43,3 +43,26 @@ export function epnCampaignId(): string | null {
 export const DAILY_SCAN_LIMIT = 20;
 export const MONTHLY_BUDGET_USD = 8; // per-user soft cap; friendly block at cap
 export const FREE_SCAN_LIMIT = 3;
+
+// Pure decision logic for the daily-rate-limit + monthly-AI-budget-cap gate (scan/index.ts
+// step 4). Extracted so the "at cap -> soft-block" behavior is unit-testable without a
+// Deno runtime or a live Postgres connection — record_ai_usage does the atomic increment,
+// this function only decides what the already-incremented counters mean.
+export interface UsageCheckInput {
+  scansToday: number;
+  monthCostUsd: number;
+}
+export type UsageCheckReason = 'ok' | 'rate_limited' | 'budget_capped';
+export interface UsageCheckResult {
+  allowed: boolean;
+  reason: UsageCheckReason;
+}
+
+export function checkUsageLimits(input: UsageCheckInput): UsageCheckResult {
+  // Rate limit is checked first: a user who is both over the daily count AND the monthly
+  // budget should see the (temporary, resets tomorrow) rate-limit message rather than the
+  // budget message, which reads as more final.
+  if (input.scansToday > DAILY_SCAN_LIMIT) return { allowed: false, reason: 'rate_limited' };
+  if (input.monthCostUsd > MONTHLY_BUDGET_USD) return { allowed: false, reason: 'budget_capped' };
+  return { allowed: true, reason: 'ok' };
+}
