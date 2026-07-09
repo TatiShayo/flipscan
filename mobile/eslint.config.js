@@ -1,6 +1,7 @@
 // Flat ESLint config (ESLint 9+). Extends the official Expo config; project-specific
 // tweaks kept minimal. Ignores generated/native output so lint stays fast and relevant.
 const expoConfig = require('eslint-config-expo/flat');
+const globals = require('globals');
 
 module.exports = [
   ...expoConfig,
@@ -13,6 +14,15 @@ module.exports = [
       'ios/*',
       'android/*',
     ],
+  },
+  {
+    // Root-level CommonJS config files (jest.config.js etc.) run under plain Node, not the
+    // app's ESM/RN environment — they need node/CommonJS globals (__dirname, module, require).
+    files: ['jest.config.js', 'babel.config.js', 'metro.config.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: globals.node,
+    },
   },
   {
     files: ['**/*.ts', '**/*.tsx'],
