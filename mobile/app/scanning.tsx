@@ -3,7 +3,7 @@
 // reveal in app/result/[scanId].tsx). Runs the real scan request (edge fn or local mock,
 // same call site) while the staged copy plays, then hands off to the result screen.
 import { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -17,6 +17,7 @@ import Animated, {
   FadeOut,
 } from 'react-native-reanimated';
 import { Colors, Spacing, Type } from '@/constants/theme';
+import { Icon } from '@/components/Icon';
 import { useCapturedImageStore } from '@/store/captureStore';
 import { requestScan } from '@/lib/scanApi';
 import { deviceHash } from '@/lib/device';
@@ -31,6 +32,7 @@ const STAGES = ['Identifying…', 'Checking listings…', 'Calculating your prof
 
 export default function ScanningScreen() {
   const [stageIndex, setStageIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const pending = useCapturedImageStore((s) => s.pending);
   const setResult = useCapturedImageStore((s) => s.setResult);
   const addHistoryItem = useScanStore((s) => s.addHistoryItem);
@@ -81,9 +83,7 @@ export default function ScanningScreen() {
           router.replace('/paywall');
         } else {
           captureError(new Error(outcome.error.error), { message: outcome.error.message });
-          router.replace({
-            pathname: '/(tabs)/scan',
-          });
+          setError(outcome.error.error);
         }
         return;
       }
@@ -125,7 +125,7 @@ export default function ScanningScreen() {
       }, 400);
     })().catch((e) => {
       captureError(e);
-      if (!cancelled) router.replace('/(tabs)/scan');
+      if (!cancelled) setError('network_error');
     });
 
     return () => {
@@ -133,6 +133,38 @@ export default function ScanningScreen() {
       stageTimers.forEach(clearTimeout);
     };
   }, [pending, addHistoryItem, setResult, defaultPlatform]);
+
+  if (error) {
+    const errorTitle = error === 'paywall' ? 'No scans left' : 'Scan failed';
+    const errorMessage = error === 'paywall'
+      ? 'You\'ve used your free scans. Subscribe for unlimited scanning.'
+      : error === 'network_error'
+        ? 'Network connection failed. Please check your connection and try again.'
+        : 'We couldn\'t identify this item. Please try another photo.';
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.center}>
+          <Icon name="alert-circle" size={48} color={Colors.clay} />
+          <Text style={styles.errorTitle}>{errorTitle}</Text>
+          <Text style={styles.errorMessage}>{errorMessage}</Text>
+          <View style={styles.errorActions}>
+            <Pressable
+              onPress={() => router.replace('/camera')}
+              style={styles.retryButton}
+            >
+              <Text style={styles.retryButtonText}>Try again</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.replace('/(tabs)/scan')}
+              style={styles.cancelButton}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -171,4 +203,11 @@ const styles = StyleSheet.create({
   stepsRow: { flexDirection: 'row', gap: Spacing.sm },
   stepDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.paperEdge },
   stepDotActive: { backgroundColor: Colors.flip },
+  errorTitle: { ...Type.heading, color: Colors.ink, textAlign: 'center' },
+  errorMessage: { ...Type.bodySm, color: Colors.inkSoft, textAlign: 'center', maxWidth: 300 },
+  errorActions: { marginTop: Spacing.xl, width: '100%', gap: Spacing.sm },
+  retryButton: { backgroundColor: Colors.forest, paddingVertical: Spacing.md, borderRadius: 8, alignItems: 'center' },
+  retryButtonText: { ...Type.bodySemibold, color: Colors.white, fontSize: 14 },
+  cancelButton: { paddingVertical: Spacing.md, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: Colors.paperEdge },
+  cancelButtonText: { ...Type.bodySemibold, color: Colors.ink, fontSize: 14 },
 });

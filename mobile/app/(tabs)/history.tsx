@@ -60,6 +60,13 @@ export default function HistoryTab() {
           <Icon name="history" size={36} color={Colors.inkFaint} />
           <Text style={styles.emptyTitle}>No scans yet</Text>
           <Text style={styles.emptyBody}>Your scan history will show up here, receipt-style.</Text>
+          <Pressable
+            onPress={() => router.push('/camera')}
+            style={styles.emptyAction}
+            accessibilityLabel="Start scanning"
+          >
+            <Text style={styles.emptyActionText}>Start scanning</Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
@@ -177,4 +184,6 @@ const styles = StyleSheet.create({
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, padding: Spacing.xxl },
   emptyTitle: { ...Type.heading },
   emptyBody: { ...Type.bodySm, color: Colors.inkSoft, textAlign: 'center' },
+  emptyAction: { marginTop: Spacing.lg, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, backgroundColor: Colors.forest, borderRadius: Radius.md },
+  emptyActionText: { ...Type.bodySemibold, fontSize: 14, color: Colors.white, textAlign: 'center' },
 });
