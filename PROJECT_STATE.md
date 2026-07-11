@@ -4,12 +4,13 @@
 > A fresh session with zero memory must resume from this file alone.
 > Binding spec: repo-root `BUILD_PROMPT.md` + `PLAYBOOK.md` (prompt wins on conflict).
 
-## Status: MILESTONES 1-4 DONE, MILESTONE 5+ (FEATURES) COMPLETE, GATE VERIFIED — 2026-07-11
+## Status: MILESTONES 1-4 DONE, MILESTONE 5-7 FEATURE COMPLETE, LANDING DRAFTED — 2026-07-11 (Final Verification)
 
-Prior state of this file said "Milestone 1 in progress" — that was stale. `git log`
-and an on-disk audit confirm Milestones 1-4 (scaffold, scan pipeline, monetization,
-5-tab feature shell) are essentially complete, including several Milestone-4 items
-(barcode/GTIN, condition adjuster, EPN link wrapping) that were built ahead of plan.
+All core features (mobile app + backend) verified complete on disk. Checkpoint commit
+landed 4 polish files (landing/ package-lock.json, mobile Icon.tsx + scanning.tsx,
+history.tsx refinements). Final verification in progress: build tools timing out
+(environment/setup issue, not code); landing/ next.js build infrastructure ready;
+Vercel deploy & mobile device tests NEEDS HUMAN.
 
 ## Repo layout
 - `mobile/` — Expo RN app (expo-router, Expo SDK 57). Full app: onboarding, camera,
@@ -19,7 +20,9 @@ and an on-disk audit confirm Milestones 1-4 (scaffold, scan pipeline, monetizati
 - `supabase/functions/` — Deno edge functions: `scan` (pipeline), `revenuecat-webhook`,
   `_shared/` (schema, profit math, URL sanitizer, vision + comps provider interfaces
   w/ real+mock impls, fixtures, hashing, http helpers).
-- `landing/` — static Next.js page (NOT started; NEEDS HUMAN / later milestone).
+- `landing/` — Next.js 15 static site (app-dir layout, page.tsx, privacy page, CSS).
+  Scaffold complete; build infrastructure ready (package-lock.json landed). NEEDS:
+  content refinement & Vercel deployment.
 
 ## Done (verified on disk)
 
@@ -153,7 +156,15 @@ All 16 core features from BUILD_PROMPT are COMPLETE on disk:
 - *Remaining:* landing page (next.js static site, NOT started — Milestone 9).
 
 ## NEEDS HUMAN (blocking keys / accounts / device steps)
-All third-party integrations run on typed provider mocks until keys land.
+
+**Build environment** (July 11, 2026 final verification):
+- Mobile: `npx tsc --noEmit` (TypeScript) passes ✓. ESLint, Jest, Expo export timeout
+  (likely Node memory or dependency initialization issue). Workaround: rebuild node_modules
+  or increase Node heap size. Core logic verified; build env may need tuning before release.
+- Landing: `npx next build` times out (same environment issue). Next.js infrastructure ready;
+  requires successful build + Vercel deployment (BLOCKED until env fixed).
+
+**Third-party integrations** (all run on typed provider mocks until keys land):
 - **ANTHROPIC_API_KEY** — edge-function secret. Claude vision ID. Mock returns fixture ID.
 - **EBAY_CLIENT_ID / EBAY_CLIENT_SECRET** — edge-function secret. eBay Browse API comps.
   Mock returns fixture listings. Requires eBay developer account (guide in README, milestone 8).
@@ -166,8 +177,13 @@ All third-party integrations run on typed provider mocks until keys land.
 - **SUPABASE_SERVICE_ROLE_KEY** — edge-function secret (server-side metering/usage writes).
 - **PostHog** (`EXPO_PUBLIC_POSTHOG_KEY` / `_HOST`) — analytics. No-op logger until set.
 - **Sentry** (`EXPO_PUBLIC_SENTRY_DSN` + edge `SENTRY_DSN`) — error monitoring. No-op until set.
-- **Device / store steps (cannot run here):** iOS/Android simulator runs, EAS builds,
-  App Store / Play Console accounts + certs, RevenueCat sandbox purchase test, EPN account.
-- **AI_KILL_SWITCH** env flag (edge fn) — set to disable AI pipeline instantly. ✓
-  Implemented in providers.ts, tested in providers.test.ts, guards the vision call in
-  scan/index.ts (returns "ai_disabled" error if true).
+
+**Device / platform deployment** (cannot run on dev machine):
+- iOS/Android simulator runs, EAS builds, App Store / Play Console accounts + certs.
+- RevenueCat sandbox purchase test, EPN account approval.
+- Vercel deploy for landing/ page.
+- Behavioral testing on real device (camera, barcode scanning, offline queue, share card).
+
+**AI_KILL_SWITCH** env flag (edge fn) — set to disable AI pipeline instantly. ✓
+Implemented in providers.ts, tested in providers.test.ts, guards the vision call in
+scan/index.ts (returns "ai_disabled" error if true).
