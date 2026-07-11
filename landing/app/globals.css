@@ -1,0 +1,119 @@
+:root {
+  --cream: #FBF7F0;
+  --forest: #1F6F4A;
+  --ink: #1A1A1A;
+  --clay: #C4826B;
+  --gray-light: #F5F1EB;
+  --gray-dark: #3D3D3D;
+  --border: #E5DDD4;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  background-color: var(--cream);
+  color: var(--ink);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-space-grotesk), system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: clamp(1.875rem, 5vw, 2.5rem);
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: clamp(1.25rem, 3vw, 1.5rem);
+  line-height: 1.4;
+}
+
+/* Numbers and prices */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-jetbrains-mono), monospace;
+}
+
+/* Links */
+a {
+  color: var(--forest);
+  text-decoration: none;
+  transition: color 200ms ease;
+}
+
+a:hover {
+  color: var(--clay);
+}
+
+/* Button reset */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+}
+
+/* Forms */
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Utilities */
+.text-center {
+  text-align: center;
+}
+
+.text-forest {
+  color: var(--forest);
+}
+
+.bg-cream {
+  background-color: var(--cream);
+}
+
+.bg-forest {
+  background-color: var(--forest);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Baseline spacing rhythm */
+section {
+  margin: 3rem 0;
+}
+
+@media (max-width: 768px) {
+  section {
+    margin: 2rem 0;
+  }
+}
