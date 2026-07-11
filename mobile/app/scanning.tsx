@@ -16,7 +16,7 @@ import Animated, {
   FadeIn,
   FadeOut,
 } from 'react-native-reanimated';
-import { Colors, Spacing, Type } from '@/constants/theme';
+import { Colors, Fonts, Spacing, Type } from '@/constants/theme';
 import { Icon } from '@/components/Icon';
 import { useCapturedImageStore } from '@/store/captureStore';
 import { requestScan } from '@/lib/scanApi';
@@ -144,7 +144,7 @@ export default function ScanningScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
-          <Icon name="alert-circle" size={48} color={Colors.clay} />
+          <Icon name="alert" size={48} color={Colors.skip} />
           <Text style={styles.errorTitle}>{errorTitle}</Text>
           <Text style={styles.errorMessage}>{errorMessage}</Text>
           <View style={styles.errorActions}>
@@ -206,8 +206,8 @@ const styles = StyleSheet.create({
   errorTitle: { ...Type.heading, color: Colors.ink, textAlign: 'center' },
   errorMessage: { ...Type.bodySm, color: Colors.inkSoft, textAlign: 'center', maxWidth: 300 },
   errorActions: { marginTop: Spacing.xl, width: '100%', gap: Spacing.sm },
-  retryButton: { backgroundColor: Colors.forest, paddingVertical: Spacing.md, borderRadius: 8, alignItems: 'center' },
-  retryButtonText: { ...Type.bodySemibold, color: Colors.white, fontSize: 14 },
+  retryButton: { backgroundColor: Colors.flip, paddingVertical: Spacing.md, borderRadius: 8, alignItems: 'center' },
+  retryButtonText: { fontFamily: Fonts.bodyMedium, color: Colors.white, fontSize: 14 },
   cancelButton: { paddingVertical: Spacing.md, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: Colors.paperEdge },
-  cancelButtonText: { ...Type.bodySemibold, color: Colors.ink, fontSize: 14 },
+  cancelButtonText: { fontFamily: Fonts.bodySemibold, color: Colors.ink, fontSize: 14 },
 });

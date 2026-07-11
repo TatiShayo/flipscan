@@ -21,7 +21,8 @@ export type IconName =
   | 'flash-off'
   | 'switch-camera'
   | 'plus'
-  | 'wifi-off';
+  | 'wifi-off'
+  | 'alert';
 
 interface IconProps {
   name: IconName;
@@ -161,6 +162,14 @@ export function Icon({ name, size = 24, color = '#211D18', strokeWidth = 2 }: Ic
           <Path d="M5 12.5a10 10 0 0 1 3.5-2.3" />
           <Path d="M19 12.5a10 10 0 0 0-3-2.1" />
           <Rect x={11} y={19} width={2} height={2} rx={1} fill={color} stroke="none" />
+        </Svg>
+      );
+    case 'alert':
+      return (
+        <Svg {...props}>
+          <Path d="M12 2l10.39 18H1.61L12 2Z" />
+          <Line x1={12} y1={9} x2={12} y2={13} />
+          <Line x1={12} y1={17} x2={12.01} y2={17} />
         </Svg>
       );
     default:

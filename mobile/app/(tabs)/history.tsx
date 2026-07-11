@@ -184,6 +184,6 @@ const styles = StyleSheet.create({
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, padding: Spacing.xxl },
   emptyTitle: { ...Type.heading },
   emptyBody: { ...Type.bodySm, color: Colors.inkSoft, textAlign: 'center' },
-  emptyAction: { marginTop: Spacing.lg, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, backgroundColor: Colors.forest, borderRadius: Radius.md },
-  emptyActionText: { ...Type.bodySemibold, fontSize: 14, color: Colors.white, textAlign: 'center' },
+  emptyAction: { marginTop: Spacing.lg, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md, backgroundColor: Colors.flip, borderRadius: Radius.md },
+  emptyActionText: { fontFamily: Fonts.bodySemibold, fontSize: 14, color: Colors.white, textAlign: 'center' },
 });
