@@ -77,6 +77,7 @@ export default function ScanningScreen() {
       if (!outcome.ok) {
         track('scan_failed', { error: outcome.error.error });
         if (outcome.error.error === 'paywall') {
+          track('free_scans_exhausted', { free_scans_used: outcome.error.free_scans_used ?? null });
           router.replace('/paywall');
         } else {
           captureError(new Error(outcome.error.error), { message: outcome.error.message });

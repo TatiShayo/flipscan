@@ -2,7 +2,7 @@
 // exhausted. Personalizes the pitch with the user's OWN found-profit total (their real
 // scan history), not generic promises. RevenueCat is behind CONFIGURED.revenueCat — runs
 // on a mock entitlement flow until EXPO_PUBLIC_RC_IOS_KEY/_ANDROID_KEY land (NEEDS HUMAN).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +26,14 @@ export default function Paywall() {
   const [busy, setBusy] = useState(false);
 
   const found = potentialProfitFound();
+
+  // Fire once per mount (BUILD_PROMPT cross-cutting analytics requirement: "paywall view").
+  // Deliberately excludes `found`/`historyCount` from deps -- this should log the pitch
+  // shown at open, not re-fire if the underlying scan history changes while it's open.
+  useEffect(() => {
+    track('paywall_viewed', { potential_profit_found: found, history_count: historyCount });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubscribe = async () => {
     setBusy(true);
