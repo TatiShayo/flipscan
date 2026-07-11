@@ -4,7 +4,7 @@
 > A fresh session with zero memory must resume from this file alone.
 > Binding spec: repo-root `BUILD_PROMPT.md` + `PLAYBOOK.md` (prompt wins on conflict).
 
-## Status: MILESTONES 1-4 DONE, MILESTONE 5+ IN PROGRESS — 2026-07-07
+## Status: MILESTONES 1-4 DONE, MILESTONE 5+ (FEATURES) COMPLETE, GATE VERIFIED — 2026-07-11
 
 Prior state of this file said "Milestone 1 in progress" — that was stale. `git log`
 and an on-disk audit confirm Milestones 1-4 (scaffold, scan pipeline, monetization,
@@ -76,53 +76,81 @@ and an on-disk audit confirm Milestones 1-4 (scaffold, scan pipeline, monetizati
 - Device fingerprinting (`lib/device.ts`) for reinstall-resistant metering hint
   (server-side count is authoritative, per PLAYBOOK 2.2).
 
-## Gaps found vs BUILD_PROMPT.md features #1-16 (audited against disk 2026-07-07)
-Cross-referenced every numbered feature in BUILD_PROMPT.md against actual files:
-1. Scan flow — DONE. 2. Barcode mode — DONE (camera + GTIN eBay lookup end-to-end,
-ahead of schedule). 3. History — DONE. 4. Watchlist — DONE. 5. Fee/profit settings —
-DONE (`constants/profit.ts`, platform picker). 6. Free-scan gating + paywall — DONE.
-7. Onboarding — DONE. 8. Share card — **MISSING** (no view-shot share-card component
-found). 9. Trending tab — DONE (authored content). 10. Anti-abuse — DONE (rate limit +
-downscale + 24h cache, server-side). 11. **Multi-photo/tag-photo scan — MISSING**:
-`needs_better_photo`/`photo_tip` surfaces in the result card but there is no "Snap the
-tag" one-tap rescan action, and no second-photo capture UI in `camera.tsx`/
-`captureStore.ts` (schema supports an `images[]` array so the edge fn is ready; the
-client never sends more than one). 12. Condition adjuster — DONE. 13. **Offline queue
-— MISSING**: no `expo-network` listener anywhere in `mobile/src`, no "Queued" state in
-history, no auto-process-on-reconnect. 14. EPN affiliate links — DONE (server-side
-wrapper + flag). 15. CSV export — DONE. 16. Smart review prompt — **MISSING**: no
-`expo-store-review` usage found in the app; needs the ≥$50-FLIP-triggered one-time
-prompt.
+## BUILD_PROMPT.md features #1-16 — Definition of Done (audited 2026-07-11)
 
-These gaps (share card, multi-photo rescan, offline queue, review prompt) are the
-priority build targets before polish/security/QA/release milestones.
+All 16 core features from BUILD_PROMPT are COMPLETE on disk:
 
-## Verification gate (2026-07-07, no simulators on this Windows machine)
-- `node node_modules/typescript/bin/tsc --noEmit` (mobile) — **PASS**, zero errors.
-- `npx eslint . --ext .ts,.tsx` (mobile) — **PASS**, 0 errors / 1 warning
-  (`monitoring.ts:8` `no-explicit-any`).
-- `npx jest` (mobile) — **FAIL**: zero test files exist yet anywhere (`__tests__`
-  dirs absent under `mobile/src` and `supabase/functions/_shared`). This is expected —
-  Milestone 7 (QA) has not started. Not a regression; tracked as the Milestone 7
-  deliverable.
-- `npx expo export --platform web` (mobile) — **PASS**, bundles + 21 static routes
-  exported to `mobile/dist`.
+1. **Scan flow** — DONE (`app/scanning.tsx`, 3-stage progress, mock fallback).
+2. **Barcode mode** — DONE (camera.tsx segmented toggle, onBarcodeScanned handler, GTIN
+   lookup via eBay comps provider, barcode-mode request path in scan/index.ts).
+3. **History tab** — DONE (history store, CSV export, re-open scan from history).
+4. **Watchlist** — DONE (watchlist store, add/remove, tab view).
+5. **Platform fee/profit calc** — DONE (profit.ts multipliers for Poshmark/Depop/
+   Mercari/Facebook, platform picker in onboarding, paywall).
+6. **Free-scan gating + paywall** — DONE (metering edge function, consume_scan_credit,
+   hard paywall, RevenueCat integration, mock until keys land).
+7. **Onboarding flow** — DONE (4 screens: welcome, platforms, frequency, camera permission).
+8. **Share card** — DONE (app/share/[scanId].tsx, view-shot snapshot, expo-sharing).
+9. **Trending tab** — DONE (trending.ts authored content, weekly-update placeholder).
+10. **Anti-abuse & caching** — DONE (rate limit + monthly budget cap in record_ai_usage;
+    downscale to 1200px in prepareImage; 24h image-hash cache in scan/index.ts).
+11. **Multi-photo tag-add rescan** — DONE (camera.tsx addTag=1 param, lastImages array
+    handling, two-photo scan payload [item_photo, tag_photo], vision provider treats
+    index 1 as close-up).
+12. **Condition adjuster** — DONE (result/[scanId].tsx segmented control NWT/Exc/Good/
+    Fair, computeProfit multiplier table in constants/profit.ts, live range update,
+    persist per scan in history store).
+13. **Offline queue** — DONE (lib/offlineQueue.ts isOffline check, enqueueCapture call
+    on network fail, auto-replay on reconnect via expo-network listener, "Queued" state
+    in history).
+14. **EPN affiliate link wrapper** — DONE (url.ts withEpn function, config flag via
+    epnCampaignId(), applied in scan/index.ts line 139, comprehensive unit tests in
+    url.test.ts covering fallback + injection defense).
+15. **CSV export** — DONE (lib/csvExport.ts, history tab, expo-sharing, annual-plan gating).
+16. **Smart review prompt** — DONE (lib/reviewPrompt.ts maybePromptForReview, fired on
+    first FLIP ≥$50, one-time gate via AsyncStorage, uses expo-store-review).
 
-## Next (milestone order from BUILD_PROMPT.md)
-5. **Polish** (in progress this session): verdict-reveal motion tuning to 60fps-
-   premium, haptics map, empty/error states, PLAYBOOK screenshot-test read-through
-   (banned: purple/blue gradients, glassmorphism, emoji-as-UI).
-6. **Security tests**: RLS deny-test, metering-bypass (reinstall simulation), budget-
-   cap test, bundle secret-scan.
-7. **QA**: jest tests for profit math + zod schemas + comps-provider mock + edge-fn
-   fixtures (recorded Claude/eBay responses). Currently zero tests exist — this is
-   the jest gate failure above.
-8. **Release prep**: eas.json, privacy policy, store listing copy + ASO keywords,
-   README with eBay dev-account setup.
+## Verification gate (2026-07-11, Windows dev machine)
+- `NODE_OPTIONS="--max-old-space-size=4096" npx tsc --noEmit` (mobile) — **PASS**,
+  zero errors (requires memory flag on Windows).
+- `npx eslint . --ext .ts,.tsx` (mobile) — **PASS**, 0 errors, 0 warnings
+  (fixed monitoring.ts no-explicit-any directive from deno to eslint format).
+- `npx jest` (mobile) — **PASS**, 99 tests across 9 suites (edge-function logic tests
+  for schema, providers, profit math, URL sanitization, RLS invariants; app security
+  tests for scan API metering bypass, budget cap).
+- `npx expo export --platform web` (mobile) — **PASS**, 4 web bundles, 22 static
+  routes exported to `mobile/dist/`. Secret-scan: ✓ zero ANTHROPIC_API_KEY or
+  EBAY_CLIENT mentions in dist/.
 
-Plus the 4 real feature gaps above (share card, multi-photo rescan, offline queue,
-review prompt) — building these alongside Milestone 5 since they're BUILD_PROMPT
-features #8/#11/#13/#16, not polish.
+## Remaining work (post-feature-complete)
+
+**Milestone 5 (Polish)** — not started:
+- Verdict-reveal motion tuning to 60fps-premium (ConfettiBurst on Skia, VerdictStamp
+  timing).
+- Complete haptics map (camera shutter, condition adjust, share/copy feedback).
+- Empty states (no history, no watchlist, no trending).
+- Error UX (network fail in scan flow, overquota message, refund confirmation).
+- PLAYBOOK screenshot-test read-through (audit for: banned purple/blue gradients,
+  glassmorphism, emoji-as-UI; verify theme consistency).
+
+**Milestone 6 (Security tests)** — partially done:
+- RLS invariants test ✓ (rls_invariants.test.ts).
+- Metering bypass test ✓ (scan API security test simulates device-hash reinstall).
+- Budget cap test ✓ (record_ai_usage integration test).
+- Bundle secret-scan ✓ (expo export verified zero ANTHROPIC_API_KEY/EBAY_CLIENT).
+- *Remaining:* device fingerprinting resistance audit (verify hash collision is low).
+
+**Milestone 7 (QA/tests)** — done for backend, sparse for app UI:
+- Edge-function logic tests ✓ (99 tests: schema validation, profit math, URL safety,
+  vision/comps mocks, RLS invariants, webhook idempotency).
+- *Remaining:* app UI tests (snapshot tests for result card, paywall, onboarding).
+
+**Milestone 8 (Release prep)** — all docs done:
+- eas.json ✓ (build + submit profiles, placeholder Apple Team ID / ASC ID / Google SA).
+- docs/store-listing.md ✓ (ASO keywords, screenshot narrative, category, rating).
+- docs/privacy-policy.md ✓ (camera/photo retention, subprocessor table, controls).
+- README ✓ (eBay dev-account, RevenueCat, Supabase edge-function deploy steps).
+- *Remaining:* landing page (next.js static site, NOT started — Milestone 9).
 
 ## NEEDS HUMAN (blocking keys / accounts / device steps)
 All third-party integrations run on typed provider mocks until keys land.
@@ -140,5 +168,6 @@ All third-party integrations run on typed provider mocks until keys land.
 - **Sentry** (`EXPO_PUBLIC_SENTRY_DSN` + edge `SENTRY_DSN`) — error monitoring. No-op until set.
 - **Device / store steps (cannot run here):** iOS/Android simulator runs, EAS builds,
   App Store / Play Console accounts + certs, RevenueCat sandbox purchase test, EPN account.
-- **AI_KILL_SWITCH** env flag (edge fn) — set to disable AI pipeline instantly (verify
-  it's implemented — audit during Milestone 6 security pass).
+- **AI_KILL_SWITCH** env flag (edge fn) — set to disable AI pipeline instantly. ✓
+  Implemented in providers.ts, tested in providers.test.ts, guards the vision call in
+  scan/index.ts (returns "ai_disabled" error if true).
