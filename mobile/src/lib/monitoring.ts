@@ -4,7 +4,7 @@
 import { CONFIGURED, ENV } from '@/config/env';
 
 let installed = false;
-// deno-lint-ignore no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let sentry: any = null;
 
 export async function initMonitoring(): Promise<void> {
