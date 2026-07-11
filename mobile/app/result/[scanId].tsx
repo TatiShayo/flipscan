@@ -7,7 +7,6 @@ import { View, Text, StyleSheet, ScrollView, Pressable, Image, TextInput } from 
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import { Colors, Fonts, Radius, Spacing, Type } from '@/constants/theme';
 import { PriceText } from '@/components/PriceText';
 import { PriceRangeBar } from '@/components/PriceRangeBar';
@@ -133,7 +132,6 @@ export default function ResultScreen() {
           <Pressable
             onPress={() => {
               if (!scanId) return;
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               toggleWatchlist(scanId);
               track('watchlist_added', { scan_id: scanId });
             }}
@@ -193,7 +191,6 @@ export default function ResultScreen() {
                   <Pressable
                     key={c.key}
                     onPress={() => {
-                      Haptics.selectionAsync().catch(() => {});
                       setCondition(c.key);
                       commitAdjustment(c.key, buyPriceInput);
                     }}

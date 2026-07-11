@@ -9,7 +9,6 @@ import { Button } from '@/components/Button';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useSettingsStore } from '@/store/settingsStore';
 import { track } from '@/lib/analytics';
-import * as Haptics from 'expo-haptics';
 
 const OPTIONS = ['Just started', '1-3 trips', 'Weekly regular', 'Full-time flipper'];
 
@@ -41,7 +40,6 @@ export default function Frequency() {
             <Pressable
               key={opt}
               onPress={() => {
-                Haptics.selectionAsync().catch(() => {});
                 setSelected(opt);
                 setThriftFrequency(opt);
               }}

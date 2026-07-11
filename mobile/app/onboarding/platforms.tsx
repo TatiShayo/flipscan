@@ -8,7 +8,6 @@ import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { PLATFORM_FEES, PLATFORM_LABELS, type Platform } from '@/constants/profit';
 import { useSettingsStore } from '@/store/settingsStore';
 import { track } from '@/lib/analytics';
-import * as Haptics from 'expo-haptics';
 
 const PLATFORMS = Object.keys(PLATFORM_FEES) as Platform[];
 
@@ -40,7 +39,6 @@ export default function Platforms() {
             <Pressable
               key={p}
               onPress={() => {
-                Haptics.selectionAsync().catch(() => {});
                 setSelected(p);
               }}
               style={[styles.row, active && styles.rowActive]}

@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
 import { Colors, Fonts, Radius, Spacing, Type } from '@/constants/theme';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
@@ -37,7 +36,6 @@ export default function Paywall() {
 
   const handleSubscribe = async () => {
     setBusy(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     track('trial_started', { plan });
     const result = plan === 'weekly' ? await purchaseWeekly() : await purchaseAnnual();
     setBusy(false);
@@ -147,10 +145,7 @@ function PlanCard({
 }) {
   return (
     <Pressable
-      onPress={() => {
-        Haptics.selectionAsync().catch(() => {});
-        onPress();
-      }}
+      onPress={onPress}
       style={[styles.planCard, active && styles.planCardActive]}
       accessibilityRole="radio"
       accessibilityState={{ checked: active }}
