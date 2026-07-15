@@ -1,7 +1,7 @@
 // Watchlist — items saved from a scan for later ("left in store, want to remember").
 // Reuses history rows (same visual language) filtered to watchlisted scan ids; each item
 // can carry a note + store name (BUILD_PROMPT §4).
-import { useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, Image } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,14 @@ export default function WatchlistTab() {
   const items = useMemo(
     () => history.filter((h) => watchlist.includes(h.id)),
     [history, watchlist],
+  );
+
+  // Stable renderItem so FlatList's memoized rows aren't invalidated on every parent render.
+  const renderItem = useCallback(
+    ({ item }: { item: ScanHistoryItem }) => (
+      <WatchlistRow item={item} onRemove={() => toggleWatchlist(item.id)} />
+    ),
+    [toggleWatchlist],
   );
 
   return (
@@ -40,16 +48,18 @@ export default function WatchlistTab() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          renderItem={({ item }) => (
-            <WatchlistRow item={item} onRemove={() => toggleWatchlist(item.id)} />
-          )}
+          renderItem={renderItem}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          removeClippedSubviews
         />
       )}
     </SafeAreaView>
   );
 }
 
-function WatchlistRow({ item, onRemove }: { item: ScanHistoryItem; onRemove: () => void }) {
+const WatchlistRow = memo(function WatchlistRow({ item, onRemove }: { item: ScanHistoryItem; onRemove: () => void }) {
   // Watchlisting only happens from a completed result screen, so identified/comps/verdict
   // should always be present here — but the type is nullable (queued rows share the same
   // shape), so fall back gracefully rather than crashing if that ever changes.
@@ -72,7 +82,7 @@ function WatchlistRow({ item, onRemove }: { item: ScanHistoryItem; onRemove: () 
       </Pressable>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.cream },

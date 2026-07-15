@@ -3,7 +3,7 @@
 // without shopping").
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect } from 'react';
+import { memo, useEffect } from 'react';
 import { Colors, Fonts, Radius, Spacing, Type } from '@/constants/theme';
 import { Icon } from '@/components/Icon';
 import { TRENDING_CATEGORIES, type TrendingCategory } from '@/content/trending';
@@ -26,12 +26,16 @@ export default function TrendingTab() {
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
         renderItem={({ item, index }) => <TrendingRow item={item} rank={index + 1} />}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        removeClippedSubviews
       />
     </SafeAreaView>
   );
 }
 
-function TrendingRow({ item, rank }: { item: TrendingCategory; rank: number }) {
+const TrendingRow = memo(function TrendingRow({ item, rank }: { item: TrendingCategory; rank: number }) {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -48,7 +52,7 @@ function TrendingRow({ item, rank }: { item: TrendingCategory; rank: number }) {
       <Text style={styles.lookFor}>{item.lookFor}</Text>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.cream },
