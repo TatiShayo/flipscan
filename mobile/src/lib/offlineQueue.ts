@@ -15,6 +15,31 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { track } from '@/lib/analytics';
 import { captureError } from '@/lib/monitoring';
 import type { PendingCapture } from '@/store/captureStore';
+import type { ScanError } from '@/types/scan';
+
+// A queued item is retried on TRANSIENT failures (network blip, 5xx, rate limit) up to this
+// many times before it's marked permanently 'failed'. A single dropped wifi packet during a
+// drain must not burn the capture (REVIEW_FINDINGS.md M2).
+const MAX_ATTEMPTS = 3;
+
+// Server verdicts that will NEVER succeed on replay — retrying wastes the user's credit path
+// and spams the rate limit. These fail the item immediately regardless of attempt count.
+const NON_RETRYABLE: ReadonlySet<ScanError['error']> = new Set([
+  'paywall',
+  'budget_capped',
+  'quota_exhausted',
+  'bad_request',
+  'identification_failed',
+  'ai_disabled',
+]);
+
+// Exponential inter-item backoff during a drain pass: after coming back online we don't want
+// to fire the whole queue at the rate limit in one burst. Grows per item, capped.
+const BACKOFF_BASE_MS = 400;
+const BACKOFF_CAP_MS = 5_000;
+const backoffMs = (attempt: number) =>
+  Math.min(BACKOFF_CAP_MS, BACKOFF_BASE_MS * 2 ** Math.max(0, attempt));
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 export async function isOffline(): Promise<boolean> {
   try {
@@ -58,15 +83,21 @@ export function enqueueCapture(capture: PendingCapture): string {
 
 // Drains every 'queued' history row through the real scan pipeline, one at a time (avoids
 // bursting the rate limit the moment wifi comes back after a long store trip).
-export async function processQueue(): Promise<{ resolved: number; failed: number }> {
+export async function processQueue(): Promise<{ resolved: number; failed: number; retrying: number }> {
   const { history, updateHistoryItem, removeHistoryItem, addHistoryItem } = useScanStore.getState();
   const queued = history.filter((h) => h.status === 'queued' && h.queuedPayload);
   let resolved = 0;
   let failed = 0;
+  let retrying = 0;
 
-  for (const item of queued) {
+  for (let i = 0; i < queued.length; i++) {
+    const item = queued[i];
     const payload = item.queuedPayload;
     if (!payload) continue;
+    // Exponential inter-item spacing so a queue that built up over a long offline trip
+    // drains gently instead of bursting the server-side rate limit the instant wifi returns.
+    if (i > 0) await sleep(backoffMs(i - 1));
+    const priorAttempts = item.attempts ?? 0;
     try {
       const hash = await deviceHash();
       const outcome = await requestScan({
@@ -77,8 +108,16 @@ export async function processQueue(): Promise<{ resolved: number; failed: number
         mockVariant: payload.mockVariant,
       });
       if (!outcome.ok) {
-        failed += 1;
-        updateHistoryItem(item.id, { status: 'failed', queuedPayload: undefined });
+        const attempts = priorAttempts + 1;
+        const permanent = NON_RETRYABLE.has(outcome.error.error) || attempts >= MAX_ATTEMPTS;
+        if (permanent) {
+          failed += 1;
+          updateHistoryItem(item.id, { status: 'failed', queuedPayload: undefined, attempts });
+        } else {
+          // Transient failure — keep the payload, bump the counter, retry on the next drain.
+          retrying += 1;
+          updateHistoryItem(item.id, { attempts });
+        }
         continue;
       }
       const { result } = outcome;

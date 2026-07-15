@@ -109,6 +109,10 @@ export interface ScanHistoryItem {
   platform: string;
   netProfit: number | null;
   status: 'complete' | 'queued' | 'failed';
+  // Drain attempts made against a queued item. A transient failure (network/5xx/rate-limit)
+  // keeps the item 'queued' and increments this until MAX_ATTEMPTS, then it becomes 'failed'.
+  // Absent/undefined means zero attempts so far. See lib/offlineQueue.ts.
+  attempts?: number;
   // Present only while status === 'queued': the exact request payload needed to run the
   // scan once connectivity returns. base64 images kept here too — same size class as an
   // already-persisted result photo, and queue depth is inherently small (one offline trip).
