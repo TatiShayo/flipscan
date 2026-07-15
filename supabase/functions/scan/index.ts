@@ -63,6 +63,21 @@ Deno.serve(async (req: Request) => {
     return fail('ai_disabled', 'Scanning is temporarily unavailable. Try again soon.');
   }
 
+  // Refund bookkeeping: set once a credit is consumed so ANY later failure (comps, insert,
+  // unexpected throw) refunds the same bucket it came from (REVIEW_FINDINGS.md H2/H4).
+  let creditConsumed = false;
+  let refunded = false;
+  let usedTopup = false;
+  const refund = async () => {
+    if (!creditConsumed || refunded) return;
+    refunded = true;
+    await admin.rpc('refund_scan_credit', {
+      p_device_hash: device_hash,
+      p_user_id: userId,
+      p_used_topup: usedTopup,
+    });
+  };
+
   try {
     // 4. daily rate limit + monthly budget (atomic increment, then compare)
     const { data: usage, error: usageErr } = await admin.rpc('record_ai_usage', {
@@ -94,6 +109,8 @@ Deno.serve(async (req: Request) => {
     if (!c || !c.allowed) {
       return failPaywall(c?.free_used ?? FREE_SCAN_LIMIT);
     }
+    creditConsumed = true;
+    usedTopup = c.used_topup === true;
     const freeUsed = c.free_used;
     const topupRemaining = c.topup_remaining;
 
@@ -109,7 +126,7 @@ Deno.serve(async (req: Request) => {
     if (cached?.identified) {
       identified = IdentifiedSchema.parse(cached.identified);
       // cache hit => we didn't call Claude; refund the credit we just consumed
-      await admin.rpc('refund_scan_credit', { p_device_hash: device_hash });
+      await refund();
     } else {
       // 7. vision
       const { provider: vision } = makeVisionProvider();
@@ -119,7 +136,7 @@ Deno.serve(async (req: Request) => {
           barcode: mode === 'barcode' ? barcode : undefined,
         });
       } catch {
-        await admin.rpc('refund_scan_credit', { p_device_hash: device_hash });
+        await refund();
         return fail('identification_failed', "Couldn't identify that. Try another angle.");
       }
       await admin
@@ -176,6 +193,13 @@ Deno.serve(async (req: Request) => {
     };
     return json(result, 200);
   } catch (e) {
+    // Any post-consume failure (comps, persist, unexpected) refunds the credit —
+    // users are never charged for a server-side outage.
+    try {
+      await refund();
+    } catch (refundErr) {
+      console.error('scan_refund_failed', (refundErr as Error)?.message);
+    }
     // details to Sentry (wired via SENTRY_DSN); generic message to client
     console.error('scan_pipeline_error', (e as Error)?.message);
     return fail('internal', 'Something went wrong. Please try again.');

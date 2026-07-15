@@ -23,9 +23,15 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ ok: false }, 405);
 
-  // shared-secret auth (RevenueCat sends a configurable Authorization header)
+  // shared-secret auth (RevenueCat sends a configurable Authorization header).
+  // FAIL CLOSED: with no secret configured, this endpoint can mint credits for anyone —
+  // refuse to process rather than run open (see REVIEW_FINDINGS.md H1).
   const expected = getEnv('RC_WEBHOOK_AUTH');
-  if (expected && req.headers.get('Authorization') !== expected) {
+  if (!expected) {
+    console.error('rc_webhook_misconfigured: RC_WEBHOOK_AUTH is not set; refusing request');
+    return json({ ok: false }, 503);
+  }
+  if (!timingSafeEqual(req.headers.get('Authorization') ?? '', expected)) {
     return json({ ok: false }, 401);
   }
 
@@ -57,3 +63,16 @@ Deno.serve(async (req: Request) => {
   // data === false means the event was already processed (idempotent replay)
   return json({ ok: true, granted: data === true });
 });
+
+// Constant-time string comparison (avoids leaking the shared secret via timing).
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ab = enc.encode(a);
+  const bb = enc.encode(b);
+  let diff = ab.length ^ bb.length;
+  const len = Math.max(ab.length, bb.length);
+  for (let i = 0; i < len; i++) {
+    diff |= (ab[i % (ab.length || 1)] ?? 0) ^ (bb[i % (bb.length || 1)] ?? 0);
+  }
+  return diff === 0;
+}
