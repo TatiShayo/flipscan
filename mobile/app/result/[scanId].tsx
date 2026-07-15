@@ -68,14 +68,21 @@ export default function ResultScreen() {
   // Computed even when identified/comps are missing (safe zero-value fallback) so every
   // hook below can stay above the not-found early return, per rules-of-hooks.
   const buyPrice = buyPriceInput.trim() === '' ? null : Math.max(0, Number(buyPriceInput) || 0);
-  const breakdown = computeProfit({
-    estimatedSold: comps?.estimated_sold ?? 0,
-    category: identified?.category ?? 'other',
-    condition,
-    buyPrice,
-    platform,
-  });
-  const verdict = verdictFor(breakdown, buyPrice != null);
+  // Memoized so the two reveal-stage transitions (150ms/950ms timers) and the watchlist
+  // toggle don't re-run profit math; only a real input change (condition/buyPrice/comps)
+  // recomputes it.
+  const breakdown = useMemo(
+    () =>
+      computeProfit({
+        estimatedSold: comps?.estimated_sold ?? 0,
+        category: identified?.category ?? 'other',
+        condition,
+        buyPrice,
+        platform,
+      }),
+    [comps?.estimated_sold, identified?.category, condition, buyPrice, platform],
+  );
+  const verdict = useMemo(() => verdictFor(breakdown, buyPrice != null), [breakdown, buyPrice]);
   const showConfetti = verdict === 'flip' && breakdown.netProfit >= 50;
 
   // Peak-happiness moment: first FLIP >=$50 gets the one-time store review prompt, fired a

@@ -1,6 +1,6 @@
 // Scan history — receipt-roll aesthetic (perforated-edge dividers), reverse-chron,
 // filterable by verdict, tap to reopen. CSV export lives here (annual-plan perk).
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, Image, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,6 +32,12 @@ export default function HistoryTab() {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 600);
   };
+
+  // Stable renderItem so FlatList's memoized rows aren't invalidated every parent render.
+  const renderItem = useCallback(
+    ({ item }: { item: ScanHistoryItem }) => <HistoryRow item={item} />,
+    [],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -74,15 +80,23 @@ export default function HistoryTab() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={Colors.brass} />}
-          ItemSeparatorComponent={() => <View style={styles.perforation} />}
-          renderItem={({ item }) => <HistoryRow item={item} />}
+          ItemSeparatorComponent={Perforation}
+          renderItem={renderItem}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={7}
+          removeClippedSubviews
         />
       )}
     </SafeAreaView>
   );
 }
 
-function HistoryRow({ item }: { item: ScanHistoryItem }) {
+const Perforation = () => <View style={styles.perforation} />;
+
+// Memoized: with windowing enabled, only rows whose `item` reference actually changed
+// re-render on a store update (e.g. one queued item resolving), not the whole visible list.
+const HistoryRow = memo(function HistoryRow({ item }: { item: ScanHistoryItem }) {
   const isQueued = item.status === 'queued';
   const isFailed = item.status === 'failed';
   const canOpen = item.status === 'complete';
@@ -126,7 +140,7 @@ function HistoryRow({ item }: { item: ScanHistoryItem }) {
       )}
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.cream },

@@ -147,13 +147,23 @@ export async function processQueue(): Promise<{ resolved: number; failed: number
       resolved += 1;
       track('scan_completed', { verdict: result.verdict, queued_resolved: true });
     } catch (e) {
-      failed += 1;
-      updateHistoryItem(item.id, { status: 'failed', queuedPayload: undefined });
-      captureError(e as Error, { context: 'offline_queue_process' });
+      // A thrown error here is a transient fault (network reset mid-request, DNS blip,
+      // JSON parse of a truncated response) — the same class M2 says must not burn the
+      // capture. Treat it exactly like a transient !ok: bump attempts, keep the payload,
+      // retry on the next drain until MAX_ATTEMPTS.
+      const attempts = priorAttempts + 1;
+      captureError(e as Error, { context: 'offline_queue_process', attempts });
+      if (attempts >= MAX_ATTEMPTS) {
+        failed += 1;
+        updateHistoryItem(item.id, { status: 'failed', queuedPayload: undefined, attempts });
+      } else {
+        retrying += 1;
+        updateHistoryItem(item.id, { attempts });
+      }
     }
   }
 
-  return { resolved, failed };
+  return { resolved, failed, retrying };
 }
 
 // Mount once (root layout): listens for connectivity changes and auto-drains the queue the

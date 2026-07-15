@@ -3,6 +3,7 @@
 // in behind the same seam as the mock. Sold price is estimated (0.75 * median ask) in
 // summarizeListings — this provider only supplies active-listing prices.
 import type { Comps } from './schema.ts';
+import { fetchWithBackoff } from './http.ts';
 import {
   type CompsProvider,
   type CompsQuery,
@@ -67,7 +68,7 @@ export class EbayCompsProvider implements CompsProvider {
   private async search(q: string): Promise<EbayItemSummary[]> {
     const token = await this.getToken();
     const url = `${BROWSE_URL}?q=${encodeURIComponent(q)}&limit=50&filter=buyingOptions:{FIXED_PRICE}`;
-    const res = await fetch(url, {
+    const res = await fetchWithBackoff(url, {
       headers: {
         authorization: `Bearer ${token}`,
         'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
@@ -83,7 +84,7 @@ export class EbayCompsProvider implements CompsProvider {
     const now = Date.now();
     if (this.token && this.token.expiresAt > now + 30_000) return this.token.value;
     const basic = btoa(`${this.clientId}:${this.clientSecret}`);
-    const res = await fetch(OAUTH_URL, {
+    const res = await fetchWithBackoff(OAUTH_URL, {
       method: 'POST',
       headers: {
         'content-type': 'application/x-www-form-urlencoded',

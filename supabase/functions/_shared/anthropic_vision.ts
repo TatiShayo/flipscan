@@ -2,6 +2,7 @@
 // Deno-native (fetch); no SDK dependency to keep the edge bundle small. Validates the
 // model's JSON against IdentifiedSchema and retries ONCE on parse failure (fail closed).
 import { IdentifiedSchema, type Identified } from './schema.ts';
+import { fetchWithBackoff } from './http.ts';
 import {
   VISION_SYSTEM_PROMPT,
   type VisionInput,
@@ -44,7 +45,7 @@ export class AnthropicVisionProvider implements VisionProvider {
   }
 
   private async call(content: unknown[]): Promise<string> {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetchWithBackoff('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
