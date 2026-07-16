@@ -97,11 +97,17 @@ describe('AnthropicVisionProvider parse/retry contract', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('throws on a non-200 from the API', async () => {
-    global.fetch = jest
-      .fn()
-      .mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) }) as unknown as typeof fetch;
+  it('fails closed on a persistent non-200 from the API (after backoff retries)', async () => {
+    // 429 is retryable (see fetchWithBackoff, REVIEW_FINDINGS.md M3): a PERSISTENT 429
+    // exhausts the retry budget and then surfaces as an IdentificationError (fail closed).
+    // Must return 429 for every attempt, not just the first, or the exhausted mock would
+    // yield `undefined` and throw a TypeError instead of the contractual error.
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 429, json: async () => ({}) });
+    global.fetch = fetchMock as unknown as typeof fetch;
     const provider = new AnthropicVisionProvider('sk-test');
     await expect(provider.identify({ imagesB64: ['x'] })).rejects.toBeInstanceOf(IdentificationError);
+    // 3 attempts (1 + 2 retries) per call() — and identify() never reaches the 2nd call()
+    // because the first throws, so exactly one call()'s worth of fetches fire.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
