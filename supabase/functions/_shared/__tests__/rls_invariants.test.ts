@@ -13,6 +13,17 @@ import { join } from 'node:path';
 const MIGRATIONS_DIR = join(__dirname, '../../../migrations');
 const init = readFileSync(join(MIGRATIONS_DIR, '0001_init.sql'), 'utf8');
 const metering = readFileSync(join(MIGRATIONS_DIR, '0003_metering.sql'), 'utf8');
+const hardening = readFileSync(join(MIGRATIONS_DIR, '0004_metering_hardening.sql'), 'utf8');
+
+// The EFFECTIVE definition of each RPC — 0004 redefines three of them, so asserting the
+// 0003 text alone would guard the superseded version (the exact regression that would
+// silently re-open H3/H4/M1).
+const EFFECTIVE_RPC_SOURCE: Record<string, string> = {
+  consume_scan_credit: hardening,
+  refund_scan_credit: hardening,
+  record_ai_usage: metering,
+  grant_topup_scans: hardening,
+};
 
 // Tables that hold user data or the "wallet" — RLS must be enabled on all of them.
 const RLS_TABLES = ['scans', 'watchlist', 'scan_credits', 'ai_usage', 'scan_cache'];
@@ -73,16 +84,17 @@ describe('the scan-photos bucket is private and owner-scoped', () => {
   });
 });
 
-describe('service-role RPCs are revoked from public', () => {
-  const src = init + '\n' + metering;
+describe('service-role RPCs are revoked from public (in their EFFECTIVE migration)', () => {
   it.each(SERVICE_ONLY_FUNCTIONS)('%s is REVOKEd from public', (fn) => {
-    expect(src).toMatch(new RegExp(`revoke all on function public\\.${fn}\\b[\\s\\S]*?from public`, 'i'));
+    expect(EFFECTIVE_RPC_SOURCE[fn]).toMatch(
+      new RegExp(`revoke all on function public\\.${fn}\\b[\\s\\S]*?from public`, 'i'),
+    );
   });
 
   it('every service RPC is declared security definer with a pinned search_path', () => {
     for (const fn of SERVICE_ONLY_FUNCTIONS) {
       const def = new RegExp(`create or replace function public\\.${fn}[\\s\\S]*?security definer[\\s\\S]*?set search_path = public`, 'i');
-      expect(metering).toMatch(def);
+      expect(EFFECTIVE_RPC_SOURCE[fn]).toMatch(def);
     }
   });
 });
@@ -94,17 +106,42 @@ describe('metering survives reinstall (keyed on device_hash, not client storage)
 
   it('consume_scan_credit does a single atomic conditional update (no check-then-act race)', () => {
     // The guard is in the UPDATE ... WHERE, not a prior SELECT — that's what makes it race-safe.
-    expect(metering).toMatch(/update public\.scan_credits[\s\S]*?where[\s\S]*?topup_scans_remaining > 0 or[\s\S]*?free_scans_used < p_free_limit/i);
+    expect(hardening).toMatch(/update public\.scan_credits[\s\S]*?where[\s\S]*?topup_scans_remaining > 0 or[\s\S]*?free_scans_used < p_free_limit/i);
   });
 
   it('top-up credits are consumed before free credits', () => {
-    expect(metering).toMatch(/topup_scans_remaining > 0 then sc\.topup_scans_remaining - 1/i);
+    expect(hardening).toMatch(/topup_scans_remaining > 0 then sc\.topup_scans_remaining - 1/i);
+  });
+});
+
+describe('metering-bypass hardening (0004: H3 ownership, H4 bucket refund, M1 single grant)', () => {
+  it('H3: consume refuses a row owned by a DIFFERENT user (client device_hash is untrusted)', () => {
+    // The proven exploit: replay a victim's device_hash to drain their purchased top-ups.
+    expect(hardening).toMatch(/rec\.user_id is not null and rec\.user_id <> p_user_id/i);
+    // ...and the atomic UPDATE itself is ownership-scoped, not just the pre-check.
+    expect(hardening).toMatch(/update public\.scan_credits sc[\s\S]*?where[\s\S]*?\(sc\.user_id is null or sc\.user_id = p_user_id\)/i);
+  });
+
+  it('H3: refund is scoped to the caller\'s own row', () => {
+    expect(hardening).toMatch(/create or replace function public\.refund_scan_credit\(\s*p_device_hash text,\s*p_user_id uuid/i);
+    expect(hardening).toMatch(/refund_scan_credit[\s\S]*?where device_hash = p_device_hash\s*and \(user_id is null or user_id = p_user_id\)/i);
+  });
+
+  it('H4: refund restores the SAME bucket that was consumed (top-up vs free)', () => {
+    expect(hardening).toMatch(/case when p_used_topup then topup_scans_remaining \+ 1/i);
+    expect(hardening).toMatch(/case when p_used_topup then free_scans_used else greatest\(free_scans_used - 1, 0\)/i);
+    // consume must report which bucket it spent so the caller can refund it correctly
+    expect(hardening).toMatch(/returns table \(allowed boolean, free_used int, topup_remaining int, used_topup boolean\)/i);
+  });
+
+  it('M1: a top-up grant lands on exactly ONE device row', () => {
+    expect(hardening).toMatch(/grant_topup_scans[\s\S]*?where id = \(\s*select id from public\.scan_credits\s*where user_id = p_user_id\s*order by updated_at desc\s*limit 1/i);
   });
 });
 
 describe('RevenueCat top-up grants are idempotent by event id', () => {
   it('inserts into rc_events (PK on event_id) and returns false on unique_violation', () => {
-    expect(metering).toMatch(/insert into public\.rc_events \(event_id\)/i);
-    expect(metering).toMatch(/exception when unique_violation then\s*return false/i);
+    expect(hardening).toMatch(/insert into public\.rc_events \(event_id\)/i);
+    expect(hardening).toMatch(/exception when unique_violation then\s*return false/i);
   });
 });
