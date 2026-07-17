@@ -79,6 +79,27 @@ flat in touched files.
 - `jest` (mobile) — PASS, 99 tests / 9 suites (after the vision-provider test fix).
 - `expo export` + dist secret-grep — see PROJECT_STATE.md gate section.
 
+## Final verification pass (2026-07-17)
+
+**Gap found & fixed:** `rls_invariants.test.ts` asserted the metering RPC shapes against
+`0003_metering.sql` only — i.e. the SUPERSEDED definitions. The 0004 hardening (H3
+ownership guard, H4 bucket-correct refund, M1 single-row grant — the actual metering-bypass
+fix) had no regression coverage; reverting 0004 would not have failed CI. Fixed: tests now
+resolve each RPC to its *effective* migration and add explicit H3/H4/M1 assertions
+(ownership pre-check + ownership-scoped atomic UPDATE, caller-scoped bucket-aware refund,
+`limit 1` grant). Commit `b775e81`.
+
+**Spot-verified in code (this pass):** scan fn JWT before any work (`scan/index.ts:40`);
+`consume_scan_credit` before the vision call with refund in cache-hit, identify-fail, and
+top-level catch paths; RC webhook fail-closed 503 + constant-time compare + `rc_events`
+dedupe; `sanitizeEbayUrl` (https + eBay host suffix) gates `WebBrowser.openBrowserAsync`
+in `result/[scanId].tsx:127`; RLS owner-only on scans/watchlist, no client policies on
+scan_credits/ai_usage/scan_cache/rc_events.
+
+**Gate (all foreground, this machine):** tsc 0 errors · eslint 0 problems ·
+jest 103/103, 9 suites · `expo export` + dist grep for
+ANTHROPIC_API_KEY / EBAY_CLIENT / sk-ant = zero matches. **GATE GREEN.**
+
 ## Still unresolved (explicit)
 - Global scan_cache over-counts budget on a hit (fails safe; documented, no change).
 - Live-key / device deployment steps remain NEEDS HUMAN (Supabase, Anthropic, eBay, EPN,

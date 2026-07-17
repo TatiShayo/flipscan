@@ -4,7 +4,15 @@
 > A fresh session with zero memory must resume from this file alone.
 > Binding spec: repo-root `BUILD_PROMPT.md` + `PLAYBOOK.md` (prompt wins on conflict).
 
-## Status: MILESTONES 1-4 DONE, MILESTONE 5-7 FEATURE COMPLETE, LANDING DRAFTED — 2026-07-11 (Final Verification)
+## Status: AUDIT COMPLETE — gate green (2026-07-17)
+
+Full audit trail in `AUDIT_LOG.md` (metering-bypass exploit chain proven + fixed in
+`0004_metering_hardening.sql`, regression-covered). Final gate (2026-07-17):
+tsc 0 errors · eslint 0 problems · jest 103/103 (9 suites) · expo export clean —
+zero ANTHROPIC_API_KEY / EBAY_CLIENT / sk-ant in dist/. Live-key deploy steps
+remain NEEDS HUMAN (see below).
+
+### Previous status: MILESTONES 1-4 DONE, MILESTONE 5-7 FEATURE COMPLETE, LANDING DRAFTED — 2026-07-11
 
 All core features (mobile app + backend) verified complete on disk. Checkpoint commit
 landed 4 polish files (landing/ package-lock.json, mobile Icon.tsx + scanning.tsx,
@@ -112,6 +120,15 @@ All 16 core features from BUILD_PROMPT are COMPLETE on disk:
 15. **CSV export** — DONE (lib/csvExport.ts, history tab, expo-sharing, annual-plan gating).
 16. **Smart review prompt** — DONE (lib/reviewPrompt.ts maybePromptForReview, fired on
     first FLIP ≥$50, one-time gate via AsyncStorage, uses expo-store-review).
+
+## Verification gate (2026-07-17, Windows dev machine — final audit pass)
+- `npx tsc --noEmit` (mobile) — **PASS**, 0 errors.
+- `npx eslint .` (mobile) — **PASS**, 0 errors / 0 warnings.
+- `npx jest` (mobile) — **PASS**, 103 tests / 9 suites (was 99; +4 regression tests
+  pinning metering RPC invariants to the effective 0004 definitions: H3 ownership
+  guard, H4 bucket-correct refund, M1 single-row grant).
+- `npx expo export` — **PASS**; grep of `dist/` for ANTHROPIC_API_KEY / EBAY_CLIENT /
+  sk-ant — **zero matches**.
 
 ## Verification gate (2026-07-11, Windows dev machine)
 - `NODE_OPTIONS="--max-old-space-size=4096" npx tsc --noEmit` (mobile) — **PASS**,
