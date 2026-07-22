@@ -104,3 +104,16 @@ ANTHROPIC_API_KEY / EBAY_CLIENT / sk-ant = zero matches. **GATE GREEN.**
 - Global scan_cache over-counts budget on a hit (fails safe; documented, no change).
 - Live-key / device deployment steps remain NEEDS HUMAN (Supabase, Anthropic, eBay, EPN,
   RevenueCat, PostHog, Sentry, EAS/store accounts) — see PROJECT_STATE.md.
+
+---
+
+## Fresh-Eyes Pass (July 22, 2026)
+
+- **Re-verification Gate**:
+  - `mobile/typecheck` (`tsc --noEmit`): Exit 0 (passed cleanly)
+  - `mobile/lint` (`eslint . --ext .ts,.tsx`): Exit 0 (passed cleanly)
+  - `mobile/test` (`jest`): 103/103 tests passed across 9 test suites (including `rls_invariants`, `scanApi.security`, `profit`, `comps_provider`, `vision_provider`)
+  - `landing/build` (`next build`): Exit 0 (5 static pages compiled successfully in 4.6s)
+- **Codebase Sweep**: Verified metering-bypass RPC fix (`0004_metering_hardening.sql`), RevenueCat webhook authentication fail-closed, FlatList windowing, and secret-free export bundles.
+- **Findings**: Codebase is clean, all 103 mobile tests and landing Next.js build pass without error.
+
