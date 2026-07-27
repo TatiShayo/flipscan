@@ -3,7 +3,7 @@
   "run_id": "hermes-2026-07-27-v6-flipscan",
   "project": "flipscan",
   "phase": "4.0",
-  "produced_at": "2026-07-27T22:35:34.146580",
+  "produced_at": "2026-07-27T22:36:03.188835",
   "runner_tier": "T1",
   "mode": "static-only",
   "findings": [
