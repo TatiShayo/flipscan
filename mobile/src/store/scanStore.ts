@@ -13,10 +13,12 @@ import type { ConditionGrade, ScanHistoryItem } from '@/types/scan';
 interface ScanState {
   freeScansUsed: number;
   topupRemaining: number;
+  isSubscribed: boolean;
   history: ScanHistoryItem[];
   watchlist: string[]; // scan ids
 
-  recordScanUsed: () => { freeUsed: number; topupRemaining: number };
+  recordScanUsed: () => { freeUsed: number; topupRemaining: number; isSubscribed: boolean };
+  setSubscribed: (subscribed: boolean) => void;
   addHistoryItem: (item: ScanHistoryItem) => void;
   updateHistoryItem: (id: string, patch: Partial<ScanHistoryItem>) => void;
   removeHistoryItem: (id: string) => void;
@@ -32,11 +34,15 @@ export const useScanStore = create<ScanState>()(
     (set, get) => ({
       freeScansUsed: 0,
       topupRemaining: 0,
+      isSubscribed: false,
       history: [],
       watchlist: [],
 
       recordScanUsed: () => {
-        const { freeScansUsed, topupRemaining } = get();
+        const { freeScansUsed, topupRemaining, isSubscribed } = get();
+        if (isSubscribed) {
+          return { freeUsed: freeScansUsed, topupRemaining, isSubscribed: true };
+        }
         let nextFree = freeScansUsed;
         let nextTopup = topupRemaining;
         if (freeScansUsed < FREE_SCAN_LIMIT) {
@@ -45,8 +51,10 @@ export const useScanStore = create<ScanState>()(
           nextTopup = topupRemaining - 1;
         }
         set({ freeScansUsed: nextFree, topupRemaining: nextTopup });
-        return { freeUsed: nextFree, topupRemaining: nextTopup };
+        return { freeUsed: nextFree, topupRemaining: nextTopup, isSubscribed: false };
       },
+
+      setSubscribed: (isSubscribed) => set({ isSubscribed }),
 
       addHistoryItem: (item) => set((s) => ({ history: [item, ...s.history] })),
 
@@ -76,7 +84,7 @@ export const useScanStore = create<ScanState>()(
       potentialProfitFound: () =>
         get().history.reduce((sum, h) => sum + Math.max(0, h.netProfit ?? 0), 0),
 
-      resetMeteringForTests: () => set({ freeScansUsed: 0, topupRemaining: 0 }),
+      resetMeteringForTests: () => set({ freeScansUsed: 0, topupRemaining: 0, isSubscribed: false }),
     }),
     {
       name: 'flipscan.scan-store',
@@ -84,11 +92,13 @@ export const useScanStore = create<ScanState>()(
       partialize: (s) => ({
         freeScansUsed: s.freeScansUsed,
         topupRemaining: s.topupRemaining,
+        isSubscribed: s.isSubscribed,
         history: s.history,
         watchlist: s.watchlist,
       }),
     },
   ),
 );
+
 
 export type { ConditionGrade };

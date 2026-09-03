@@ -4,8 +4,11 @@
 // a mock that always "succeeds" so the paywall flow is fully demoable. The pipeline
 // (paywall screen) is written against this interface only; swapping in the real
 // `react-native-purchases` SDK later touches only this file.
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CONFIGURED } from '@/config/env';
 import { TOPUP_SCANS_PER_PURCHASE } from '@/constants/limits';
+
+export const ENTITLEMENT_STORAGE_KEY = 'flipscan.entitlement_active';
 
 export interface PurchaseOutcome {
   ok: boolean;
@@ -23,29 +26,46 @@ export interface PurchaseProvider {
   purchaseTopup(): Promise<TopupOutcome>;
   restore(): Promise<PurchaseOutcome>;
   hasActiveEntitlement(): Promise<boolean>;
+  setEntitled(entitled: boolean): Promise<void>;
 }
 
 // ---- Mock provider (used until RevenueCat keys + Offerings are configured) ----
-class MockPurchaseProvider implements PurchaseProvider {
+export class MockPurchaseProvider implements PurchaseProvider {
   readonly name = 'mock';
-  private entitled = false;
+  private entitled: boolean | null = null;
 
   async purchaseWeekly(): Promise<PurchaseOutcome> {
-    this.entitled = true;
+    await this.setEntitled(true);
     return { ok: true };
   }
   async purchaseAnnual(): Promise<PurchaseOutcome> {
-    this.entitled = true;
+    await this.setEntitled(true);
     return { ok: true };
   }
   async purchaseTopup(): Promise<TopupOutcome> {
     return { ok: true, scans: TOPUP_SCANS_PER_PURCHASE };
   }
   async restore(): Promise<PurchaseOutcome> {
-    return { ok: this.entitled };
+    const isEntitled = await this.hasActiveEntitlement();
+    return { ok: isEntitled };
   }
   async hasActiveEntitlement(): Promise<boolean> {
+    if (this.entitled !== null) return this.entitled;
+    try {
+      const stored = await AsyncStorage.getItem(ENTITLEMENT_STORAGE_KEY);
+      this.entitled = stored === 'true';
+    } catch {
+      this.entitled = false;
+    }
     return this.entitled;
+  }
+  async setEntitled(entitled: boolean): Promise<void> {
+    this.entitled = entitled;
+    try {
+      await AsyncStorage.setItem(ENTITLEMENT_STORAGE_KEY, String(entitled));
+    } catch {
+      // Storage failure non-fatal for in-memory session
+    }
   }
 }
 
@@ -53,7 +73,7 @@ class MockPurchaseProvider implements PurchaseProvider {
 // SDK integration (react-native-purchases) is NEEDS HUMAN: requires RC dashboard Offerings
 // configured with product ids matching BUILD_PROMPT pricing before this can do anything
 // beyond falling back to the mock behavior below.
-class RevenueCatPurchaseProvider implements PurchaseProvider {
+export class RevenueCatPurchaseProvider implements PurchaseProvider {
   readonly name = 'revenuecat';
   private mock = new MockPurchaseProvider();
 
@@ -74,24 +94,35 @@ class RevenueCatPurchaseProvider implements PurchaseProvider {
   async hasActiveEntitlement(): Promise<boolean> {
     return this.mock.hasActiveEntitlement();
   }
+  async setEntitled(entitled: boolean): Promise<void> {
+    return this.mock.setEntitled(entitled);
+  }
 }
 
-const provider: PurchaseProvider = CONFIGURED.revenueCat
+const activeProvider: PurchaseProvider = CONFIGURED.revenueCat
   ? new RevenueCatPurchaseProvider()
   : new MockPurchaseProvider();
 
+export function getPurchaseProvider(): PurchaseProvider {
+  return activeProvider;
+}
+
 export function purchaseWeekly(): Promise<PurchaseOutcome> {
-  return provider.purchaseWeekly();
+  return activeProvider.purchaseWeekly();
 }
 export function purchaseAnnual(): Promise<PurchaseOutcome> {
-  return provider.purchaseAnnual();
+  return activeProvider.purchaseAnnual();
 }
 export function purchaseTopup(): Promise<TopupOutcome> {
-  return provider.purchaseTopup();
+  return activeProvider.purchaseTopup();
 }
 export function restorePurchases(): Promise<PurchaseOutcome> {
-  return provider.restore();
+  return activeProvider.restore();
 }
 export function hasActiveEntitlement(): Promise<boolean> {
-  return provider.hasActiveEntitlement();
+  return activeProvider.hasActiveEntitlement();
 }
+export function setEntitlementForTests(entitled: boolean): Promise<void> {
+  return activeProvider.setEntitled(entitled);
+}
+

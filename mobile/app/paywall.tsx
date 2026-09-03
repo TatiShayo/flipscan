@@ -40,6 +40,7 @@ export default function Paywall() {
     const result = plan === 'weekly' ? await purchaseWeekly() : await purchaseAnnual();
     setBusy(false);
     if (result.ok) {
+      useScanStore.getState().setSubscribed(true);
       track('purchase_completed', { plan });
       router.back();
     }
@@ -61,10 +62,12 @@ export default function Paywall() {
     const result = await restorePurchases();
     setBusy(false);
     if (result.ok) {
+      useScanStore.getState().setSubscribed(true);
       track('restore_completed');
       router.back();
     }
   };
+
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

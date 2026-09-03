@@ -15,6 +15,7 @@ import { track } from '@/lib/analytics';
 export default function ScanTab() {
   const freeScansUsed = useScanStore((s) => s.freeScansUsed);
   const topupRemaining = useScanStore((s) => s.topupRemaining);
+  const isSubscribed = useScanStore((s) => s.isSubscribed);
   const potentialProfitFound = useScanStore((s) => s.potentialProfitFound);
   const historyCount = useScanStore((s) => s.history.length);
 
@@ -27,12 +28,13 @@ export default function ScanTab() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
           <Text style={Type.title}>FlipScan</Text>
-          <View style={styles.chip}>
-            <Text style={styles.chipText}>
-              {scansLeft} scan{scansLeft === 1 ? '' : 's'} left
+          <View style={[styles.chip, isSubscribed && styles.chipPro]}>
+            <Text style={[styles.chipText, isSubscribed && styles.chipTextPro]}>
+              {isSubscribed ? 'Unlimited (Pro)' : `${scansLeft} scan${scansLeft === 1 ? '' : 's'} left`}
             </Text>
           </View>
         </View>
+
 
         {historyCount > 0 && (
           <View style={styles.statCard}>
@@ -82,7 +84,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     borderRadius: Radius.pill,
   },
+  chipPro: {
+    backgroundColor: Colors.flipSoft,
+    borderColor: Colors.flip,
+  },
   chipText: { fontFamily: Fonts.mono, fontSize: 12, color: Colors.inkSoft },
+  chipTextPro: { color: Colors.flip, fontFamily: Fonts.bodySemibold },
+
   statCard: {
     backgroundColor: Colors.paper,
     borderRadius: Radius.lg,

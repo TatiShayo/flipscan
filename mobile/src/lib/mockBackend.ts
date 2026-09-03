@@ -13,8 +13,10 @@ import {
 import type { ScanArgs, ScanOutcome } from '@/lib/scanApi';
 import { useScanStore } from '@/store/scanStore';
 import { FREE_SCAN_LIMIT } from '@/constants/limits';
+import { hasActiveEntitlement } from '@/lib/purchases';
 
 // Deterministic fixtures — kept in sync by hand with supabase/functions/_shared/fixtures.ts
+
 // (real content, not lorem ipsum, per PLAYBOOK 1.5).
 const FIXTURE_IDENTIFIED: Identified = IdentifiedSchema.parse({
   name: 'Patagonia Synchilla Snap-T Fleece Pullover',
@@ -125,14 +127,16 @@ function verdictForEstimate(estimate: number): 'flip' | 'maybe' | 'skip' {
 }
 
 function delay(ms: number): Promise<void> {
+  if (process.env.NODE_ENV === 'test') return Promise.resolve();
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Simulates the pipeline's staged latency (identify -> comps -> verdict) so the 3-stage
 // progress UI has something real to animate against even fully offline.
 export async function runMockScan(args: ScanArgs): Promise<ScanOutcome> {
-  const { freeScansUsed, topupRemaining, recordScanUsed } = useScanStore.getState();
-  if (freeScansUsed >= FREE_SCAN_LIMIT && topupRemaining <= 0) {
+  const { freeScansUsed, topupRemaining, isSubscribed, recordScanUsed } = useScanStore.getState();
+  const entitled = isSubscribed || (await hasActiveEntitlement());
+  if (!entitled && freeScansUsed >= FREE_SCAN_LIMIT && topupRemaining <= 0) {
     return {
       ok: false,
       error: {
@@ -143,6 +147,7 @@ export async function runMockScan(args: ScanArgs): Promise<ScanOutcome> {
       },
     };
   }
+
 
   await delay(700); // identifying
 

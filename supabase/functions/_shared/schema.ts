@@ -71,14 +71,20 @@ export const CompsSchema = z.object({
 export type Comps = z.infer<typeof CompsSchema>;
 
 // ---- Scan request / response (edge function boundary) ----
-export const ScanRequestSchema = z.object({
-  // base64 JPEG(s), downscaled client-side to <=1024px. Server re-checks size.
-  images: z.array(z.string().min(1)).min(1).max(2),
-  device_hash: z.string().min(16).max(128),
-  mode: z.enum(['photo', 'barcode']).default('photo'),
-  barcode: z.string().max(64).optional(),
-});
+export const ScanRequestSchema = z
+  .object({
+    // base64 JPEG(s), downscaled client-side to <=1024px. Server re-checks size.
+    images: z.array(z.string().min(1)).max(2).default([]),
+    device_hash: z.string().min(16).max(128),
+    mode: z.enum(['photo', 'barcode']).default('photo'),
+    barcode: z.string().max(64).optional(),
+  })
+  .refine(
+    (data) => (data.mode === 'photo' ? data.images.length >= 1 : true),
+    { message: 'Photo mode requires at least one image', path: ['images'] },
+  );
 export type ScanRequest = z.infer<typeof ScanRequestSchema>;
+
 
 export const ScanResultSchema = z.object({
   scan_id: z.string().uuid(),

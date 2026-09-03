@@ -8,7 +8,10 @@ export async function sha256Hex(input: string): Promise<string> {
 
 // Rough byte size of a base64 payload (server-side image-size re-check).
 export function base64ByteLength(b64: string): number {
-  const clean = b64.replace(/^data:[^,]+,/, '');
+  if (!b64 || typeof b64 !== 'string') return 0;
+  const clean = b64.replace(/^data:[^,]+,/, '').replace(/\s+/g, '');
+  if (clean.length === 0) return 0;
   const padding = clean.endsWith('==') ? 2 : clean.endsWith('=') ? 1 : 0;
-  return Math.floor((clean.length * 3) / 4) - padding;
+  return Math.max(0, Math.floor((clean.length * 3) / 4) - padding);
 }
+

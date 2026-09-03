@@ -78,16 +78,25 @@ export interface ProfitBreakdown {
   buyPrice: number;
   netProfit: number;
   marginPct: number | null;
+  roiPct: number | null;
+}
+
+export function calculatePlatformFee(estimate: number, platform: Platform): number {
+  if (platform === 'poshmark' && estimate > 0 && estimate < 15) {
+    return 2.95;
+  }
+  return round2(estimate * PLATFORM_FEES[platform]);
 }
 
 export function computeProfit(input: ProfitInput): ProfitBreakdown {
   const estimate = adjustedEstimate(input.estimatedSold, input.category, input.condition);
-  const platformFee = round2(estimate * PLATFORM_FEES[input.platform]);
+  const platformFee = calculatePlatformFee(estimate, input.platform);
   const shipping = SHIPPING_BY_CATEGORY[input.category];
   const buyPrice = input.buyPrice == null ? 0 : Math.max(0, input.buyPrice);
   const netProfit = round2(estimate - platformFee - shipping - buyPrice);
   const marginPct = estimate > 0 ? round2(netProfit / estimate) : null;
-  return { estimate, platformFee, shipping, buyPrice, netProfit, marginPct };
+  const roiPct = buyPrice > 0 ? round2((netProfit / buyPrice) * 100) : null;
+  return { estimate, platformFee, shipping, buyPrice, netProfit, marginPct, roiPct };
 }
 
 export function verdictFor(breakdown: ProfitBreakdown, hasBuyPrice: boolean): Verdict {
@@ -109,3 +118,4 @@ export function potentialProfitFound(estimates: number[]): number {
 export function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
+

@@ -47,22 +47,23 @@ module.exports = {
       displayName: 'rn',
       preset: 'jest-expo',
       roots: [path.join(__dirname, 'src')],
-      testMatch: ['**/__tests__/**/*.test.tsx'],
+      testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
+      modulePaths: [path.join(__dirname, 'node_modules')],
+      moduleDirectories: ['node_modules', path.join(__dirname, 'node_modules')],
       transformIgnorePatterns: [
-        'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|posthog-react-native)',
+        'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-native-async-storage|react-native-worklets)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|posthog-react-native)',
       ],
       // npm installed expo-modules-core nested under node_modules/expo/node_modules rather
       // than hoisting it to the top level, so jest-expo's own setup.js (which does a plain
       // `require('expo-modules-core')`) can't resolve it via normal node_modules walk-up.
       // Point resolution straight at the nested copy rather than depend on hoisting.
+      setupFiles: [path.join(__dirname, 'jest.setup.js')],
       moduleNameMapper: {
         '^expo-modules-core(/.*)$': path.join(__dirname, 'node_modules/expo/node_modules/expo-modules-core') + '$1',
         '^expo-modules-core$': path.join(__dirname, 'node_modules/expo/node_modules/expo-modules-core'),
-        // AsyncStorage's real implementation calls a native module that doesn't exist under
-        // plain jest (no device/simulator bridge) -- swap in the package's own official
-        // in-memory jest mock (subpath moved from "/jest-mock" to "/jest" in this version).
-        '^@react-native-async-storage/async-storage$': '@react-native-async-storage/async-storage/jest',
+        '^@react-native-async-storage/async-storage$': path.join(__dirname, 'node_modules/@react-native-async-storage/async-storage/lib/module/jest/AsyncStorageMock.js'),
       },
+
     },
   ],
 };

@@ -22,6 +22,7 @@ import { initMonitoring } from '@/lib/monitoring';
 import { ensureAnonSession } from '@/lib/supabase';
 import { useOfflineQueueProcessor } from '@/lib/offlineQueue';
 import { QueueResolvedToast } from '@/components/QueueResolvedToast';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -56,17 +57,20 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.cream }} onLayout={onLayout}>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.cream } }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="camera" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
-        <Stack.Screen name="result/[scanId]" options={{ animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
-      </Stack>
-      <QueueResolvedToast resolvedCount={justResolved} />
-    </View>
+    <ErrorBoundary>
+      <View style={{ flex: 1, backgroundColor: Colors.cream }} onLayout={onLayout}>
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.cream } }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="camera" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
+          <Stack.Screen name="result/[scanId]" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
+        </Stack>
+        <QueueResolvedToast resolvedCount={justResolved} />
+      </View>
+    </ErrorBoundary>
   );
 }
+

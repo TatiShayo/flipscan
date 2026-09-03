@@ -35,11 +35,43 @@ const NON_RETRYABLE: ReadonlySet<ScanError['error']> = new Set([
 
 // Exponential inter-item backoff during a drain pass: after coming back online we don't want
 // to fire the whole queue at the rate limit in one burst. Grows per item, capped.
-const BACKOFF_BASE_MS = 400;
-const BACKOFF_CAP_MS = 5_000;
-const backoffMs = (attempt: number) =>
-  Math.min(BACKOFF_CAP_MS, BACKOFF_BASE_MS * 2 ** Math.max(0, attempt));
+export const BACKOFF_BASE_MS = 400;
+export const BACKOFF_CAP_MS = 5_000;
+
+export function calculateBackoff(
+  attempt: number,
+  baseMs = BACKOFF_BASE_MS,
+  capMs = BACKOFF_CAP_MS,
+): number {
+  const exp = Math.min(capMs, baseMs * 2 ** Math.max(0, attempt));
+  // Add 10% jitter to prevent thundering herd
+  const jitter = Math.floor(Math.random() * (exp * 0.1));
+  return exp + jitter;
+}
+
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+let isProcessing = false;
+
+export function isQueueProcessing(): boolean {
+  return isProcessing;
+}
+
+export function getQueuedItems(): ReturnType<typeof useScanStore.getState>['history'] {
+  return useScanStore.getState().history.filter((h) => h.status === 'queued' && h.queuedPayload);
+}
+
+export function getFailedItems(): ReturnType<typeof useScanStore.getState>['history'] {
+  return useScanStore.getState().history.filter((h) => h.status === 'failed');
+}
+
+export function retryFailedItem(id: string): boolean {
+  const { history, updateHistoryItem } = useScanStore.getState();
+  const item = history.find((h) => h.id === id && h.status === 'failed');
+  if (!item || !item.queuedPayload) return false;
+  updateHistoryItem(id, { status: 'queued', attempts: 0 });
+  return true;
+}
 
 export async function isOffline(): Promise<boolean> {
   try {
@@ -70,6 +102,7 @@ export function enqueueCapture(capture: PendingCapture): string {
     platform: useSettingsStore.getState().defaultPlatform,
     netProfit: null,
     status: 'queued',
+    attempts: 0,
     queuedPayload: {
       images: capture.images.map((i) => i.base64),
       mode: capture.mode,
@@ -84,87 +117,100 @@ export function enqueueCapture(capture: PendingCapture): string {
 // Drains every 'queued' history row through the real scan pipeline, one at a time (avoids
 // bursting the rate limit the moment wifi comes back after a long store trip).
 export async function processQueue(): Promise<{ resolved: number; failed: number; retrying: number }> {
-  const { history, updateHistoryItem, removeHistoryItem, addHistoryItem } = useScanStore.getState();
-  const queued = history.filter((h) => h.status === 'queued' && h.queuedPayload);
-  let resolved = 0;
-  let failed = 0;
-  let retrying = 0;
+  if (isProcessing) {
+    return { resolved: 0, failed: 0, retrying: 0 };
+  }
+  isProcessing = true;
 
-  for (let i = 0; i < queued.length; i++) {
-    const item = queued[i];
-    const payload = item.queuedPayload;
-    if (!payload) continue;
-    // Exponential inter-item spacing so a queue that built up over a long offline trip
-    // drains gently instead of bursting the server-side rate limit the instant wifi returns.
-    if (i > 0) await sleep(backoffMs(i - 1));
-    const priorAttempts = item.attempts ?? 0;
-    try {
-      const hash = await deviceHash();
-      const outcome = await requestScan({
-        images: payload.images,
-        deviceHash: hash,
-        mode: payload.mode,
-        barcode: payload.barcode,
-        mockVariant: payload.mockVariant,
-      });
-      if (!outcome.ok) {
+  try {
+    const { history, updateHistoryItem, removeHistoryItem, addHistoryItem } = useScanStore.getState();
+    const queued = history.filter((h) => h.status === 'queued' && h.queuedPayload);
+    let resolved = 0;
+    let failed = 0;
+    let retrying = 0;
+
+    for (let i = 0; i < queued.length; i++) {
+      const item = queued[i];
+      const payload = item.queuedPayload;
+      if (!payload) continue;
+      const priorAttempts = item.attempts ?? 0;
+      // Exponential inter-item + retry spacing so a queue that built up over a long offline trip
+      // drains gently instead of bursting the server-side rate limit the instant wifi returns.
+      if (i > 0 || priorAttempts > 0) {
+        const delay = calculateBackoff(Math.max(i - 1, priorAttempts));
+        await sleep(delay);
+      }
+      try {
+        const hash = await deviceHash();
+        const outcome = await requestScan({
+          images: payload.images,
+          deviceHash: hash,
+          mode: payload.mode,
+          barcode: payload.barcode,
+          mockVariant: payload.mockVariant,
+        });
+        if (!outcome.ok) {
+          const attempts = priorAttempts + 1;
+          const permanent = NON_RETRYABLE.has(outcome.error.error) || attempts >= MAX_ATTEMPTS;
+          if (permanent) {
+            failed += 1;
+            updateHistoryItem(item.id, { status: 'failed', attempts });
+          } else {
+            // Transient failure — keep the payload, bump the counter, retry on the next drain.
+            retrying += 1;
+            updateHistoryItem(item.id, { attempts });
+          }
+          continue;
+        }
+        const { result } = outcome;
+        const breakdown = computeProfit({
+          estimatedSold: result.comps.estimated_sold,
+          category: result.identified.category,
+          condition: item.condition,
+          buyPrice: item.buyPrice,
+          platform: item.platform as Parameters<typeof computeProfit>[0]['platform'],
+        });
+        // The server minted a fresh scan_id; replace the local queued row with the real one
+        // so result/[scanId] and watchlist references line up with server-authoritative data.
+        removeHistoryItem(item.id);
+        addHistoryItem({
+          id: result.scan_id,
+          createdAt: item.createdAt,
+          imageUri: item.imageUri,
+          identified: result.identified,
+          comps: result.comps,
+          verdict: result.verdict,
+          condition: item.condition,
+          buyPrice: item.buyPrice,
+          netProfit: breakdown.netProfit,
+          platform: item.platform,
+          status: 'complete',
+        });
+        resolved += 1;
+        track('scan_completed', { verdict: result.verdict, queued_resolved: true });
+      } catch (e) {
+        // A thrown error here is a transient fault (network reset mid-request, DNS blip,
+        // JSON parse of a truncated response) — the same class M2 says must not burn the
+        // capture. Treat it exactly like a transient !ok: bump attempts, keep the payload,
+        // retry on the next drain until MAX_ATTEMPTS.
         const attempts = priorAttempts + 1;
-        const permanent = NON_RETRYABLE.has(outcome.error.error) || attempts >= MAX_ATTEMPTS;
-        if (permanent) {
+        captureError(e as Error, { context: 'offline_queue_process', attempts });
+        if (attempts >= MAX_ATTEMPTS) {
           failed += 1;
-          updateHistoryItem(item.id, { status: 'failed', queuedPayload: undefined, attempts });
+          updateHistoryItem(item.id, { status: 'failed', attempts });
         } else {
-          // Transient failure — keep the payload, bump the counter, retry on the next drain.
           retrying += 1;
           updateHistoryItem(item.id, { attempts });
         }
-        continue;
-      }
-      const { result } = outcome;
-      const breakdown = computeProfit({
-        estimatedSold: result.comps.estimated_sold,
-        category: result.identified.category,
-        condition: item.condition,
-        buyPrice: item.buyPrice,
-        platform: item.platform as Parameters<typeof computeProfit>[0]['platform'],
-      });
-      // The server minted a fresh scan_id; replace the local queued row with the real one
-      // so result/[scanId] and watchlist references line up with server-authoritative data.
-      removeHistoryItem(item.id);
-      addHistoryItem({
-        id: result.scan_id,
-        createdAt: item.createdAt,
-        imageUri: item.imageUri,
-        identified: result.identified,
-        comps: result.comps,
-        verdict: result.verdict,
-        condition: item.condition,
-        buyPrice: item.buyPrice,
-        netProfit: breakdown.netProfit,
-        platform: item.platform,
-        status: 'complete',
-      });
-      resolved += 1;
-      track('scan_completed', { verdict: result.verdict, queued_resolved: true });
-    } catch (e) {
-      // A thrown error here is a transient fault (network reset mid-request, DNS blip,
-      // JSON parse of a truncated response) — the same class M2 says must not burn the
-      // capture. Treat it exactly like a transient !ok: bump attempts, keep the payload,
-      // retry on the next drain until MAX_ATTEMPTS.
-      const attempts = priorAttempts + 1;
-      captureError(e as Error, { context: 'offline_queue_process', attempts });
-      if (attempts >= MAX_ATTEMPTS) {
-        failed += 1;
-        updateHistoryItem(item.id, { status: 'failed', queuedPayload: undefined, attempts });
-      } else {
-        retrying += 1;
-        updateHistoryItem(item.id, { attempts });
       }
     }
-  }
 
-  return { resolved, failed, retrying };
+    return { resolved, failed, retrying };
+  } finally {
+    isProcessing = false;
+  }
 }
+
 
 // Mount once (root layout): listens for connectivity changes and auto-drains the queue the
 // moment the device comes back online. Exposes `justResolved` for a one-shot in-app toast.

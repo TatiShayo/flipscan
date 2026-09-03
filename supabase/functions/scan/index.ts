@@ -114,8 +114,11 @@ Deno.serve(async (req: Request) => {
     const freeUsed = c.free_used;
     const topupRemaining = c.topup_remaining;
 
-    // 6. 24h cache by image hash (only the primary image)
-    const imageHash = await sha256Hex(images[0]);
+    // 6. 24h cache by image hash (primary image) or barcode key
+    const imageHash =
+      images.length > 0
+        ? await sha256Hex(images[0])
+        : await sha256Hex(`barcode:${barcode ?? ''}`);
     let identified;
     const { data: cached } = await admin
       .from('scan_cache')

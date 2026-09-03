@@ -12,7 +12,10 @@ const KEY = 'flipscan.device_salt';
 async function localSalt(): Promise<string> {
   let salt = await AsyncStorage.getItem(KEY);
   if (!salt) {
-    salt = Crypto.randomUUID();
+    salt =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Crypto.randomUUID?.() || `salt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     await AsyncStorage.setItem(KEY, salt);
   }
   return salt;
@@ -31,5 +34,16 @@ export async function deviceHash(): Promise<string> {
     Device.totalMemory ?? '',
     salt,
   ].join('|');
-  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, parts);
+  try {
+    const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, parts);
+    if (hash && hash.length > 0) return hash;
+  } catch {
+    // fallback to web crypto
+  }
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    const bytes = new TextEncoder().encode(parts);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  return salt;
 }
