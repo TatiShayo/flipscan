@@ -93,3 +93,22 @@ jest.mock('react-native-worklets', () => ({
   runOnJS: (fn) => fn,
   runOnUI: (fn) => fn,
 }));
+
+// Mock expo-secure-store (in-memory). The real module needs native Keychain /
+// Keystore; tests exercise the storage adapter logic in src/lib/supabase.ts.
+jest.mock('expo-secure-store', () => {
+  const store = new Map();
+  return {
+    __esModule: true,
+    getItemAsync: jest.fn(async (key) => (store.has(key) ? store.get(key) : null)),
+    setItemAsync: jest.fn(async (key, value) => {
+      store.set(key, value);
+    }),
+    deleteItemAsync: jest.fn(async (key) => {
+      store.delete(key);
+    }),
+    isAvailableAsync: jest.fn(async () => true),
+    WHEN_UNLOCKED: 0,
+    __store: store,
+  };
+});
