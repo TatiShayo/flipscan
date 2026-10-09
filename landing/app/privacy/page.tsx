@@ -16,7 +16,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2>Introduction</h2>
             <p>
-              FlipScan ("we," "us," "our," or "Company") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application (the "App").
+              FlipScan (&quot;we,&quot; &quot;us,&quot; &quot;our,&quot; or &quot;Company&quot;) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application (the &quot;App&quot;).
             </p>
           </section>
 

@@ -25,7 +25,7 @@ export default function Home() {
             <div className="step">
               <div className="step-number">1</div>
               <h3>Point your camera</h3>
-              <p>Frame the item in FlipScan's camera view.</p>
+              <p>Frame the item in FlipScan&apos;s camera view.</p>
             </div>
             <div className="step">
               <div className="step-number">2</div>
