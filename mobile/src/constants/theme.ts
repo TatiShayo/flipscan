@@ -1,7 +1,6 @@
 // "The appraiser's field tool" — the tactile confidence of an auction house in your
 // pocket. Warm cream canvas, deep-forest FLIP green, clay-red SKIP, ink text, monospace
 // numerals for every price. This replaces the Expo template theme entirely.
-//
 // Fonts (loaded in app/_layout via @expo-google-fonts):
 //   display -> Space Grotesk, body -> Inter, mono (all prices) -> JetBrains Mono.
 

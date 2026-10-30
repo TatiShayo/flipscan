@@ -68,7 +68,6 @@ export default function Paywall() {
     }
   };
 
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.scroll}>

@@ -90,7 +90,6 @@ export const supabase: SupabaseClient | null = CONFIGURED.supabase
     })
   : null;
 
-// Ensure an anonymous session exists (BUILD_PROMPT: 3 free scans, no signup). Returns the
 // user id, or a stable local pseudo-id in mock mode.
 export async function ensureAnonSession(): Promise<string> {
   if (!supabase) return 'mock-anon-user';

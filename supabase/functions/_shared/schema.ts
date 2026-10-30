@@ -1,7 +1,6 @@
 // Shared zod schemas — the single contract between the edge functions (Deno) and
 // the mobile app (RN). LLM output is validated against `IdentifiedSchema` before use;
 // it is NEVER rendered as markup or executed. eBay URLs are sanitized separately.
-//
 // NOTE: imported by Deno edge functions AND by jest (Node) tests. Keep it dependency-free
 // apart from zod, and import zod with a bare specifier so Node resolves node_modules and
 // Deno resolves via its import map (see functions/import_map.json).
@@ -84,7 +83,6 @@ export const ScanRequestSchema = z
     { message: 'Photo mode requires at least one image', path: ['images'] },
   );
 export type ScanRequest = z.infer<typeof ScanRequestSchema>;
-
 
 export const ScanResultSchema = z.object({
   scan_id: z.string().uuid(),

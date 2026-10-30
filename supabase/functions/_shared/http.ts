@@ -19,7 +19,6 @@ export function errorResponse(err: ScanError, status: number): Response {
   return json(err, status);
 }
 
-// fetch with bounded exponential backoff + jitter (REVIEW_FINDINGS.md M3). A single
 // transient 429/5xx or network blip to Anthropic/eBay would otherwise fail a scan the user
 // already paid a credit for (refunded by H2, but still a bad scan). Retries ONLY on
 // retryable conditions; 4xx (other than 429) fail fast — they won't get better on replay.

@@ -59,7 +59,6 @@ export class MockCompsProvider implements CompsProvider {
   readonly name = 'mock';
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async getComps(_query: CompsQuery): Promise<Comps> {
-    // Return the fixture, re-parsed through the schema so mock and real share validation.
     return CompsSchema.parse({ ...FIXTURE_COMPS, source: 'mock' });
   }
 }

@@ -7,7 +7,6 @@
  */
 export function sanitizeBarcode(raw: string | null | undefined): string | null {
   if (!raw || typeof raw !== 'string') return null;
-  // Remove whitespace, dashes, slashes
   const cleaned = raw.trim().replace(/[\s\-_/]+/g, '');
   if (cleaned.length < 4 || cleaned.length > 64) return null;
   // Allow alphanumeric characters only
@@ -122,7 +121,6 @@ export function computeDownscaledDimensions(
   }
 }
 
-
 /**
  * Computes rough byte size of a base64 string or data URI.
  */
@@ -133,5 +131,3 @@ export function base64ByteLength(b64: string | null | undefined): number {
   const padding = clean.endsWith('==') ? 2 : clean.endsWith('=') ? 1 : 0;
   return Math.max(0, Math.floor((clean.length * 3) / 4) - padding);
 }
-
-

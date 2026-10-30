@@ -14,4 +14,3 @@ export function base64ByteLength(b64: string): number {
   const padding = clean.endsWith('==') ? 2 : clean.endsWith('=') ? 1 : 0;
   return Math.max(0, Math.floor((clean.length * 3) / 4) - padding);
 }
-

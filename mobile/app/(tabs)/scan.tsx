@@ -35,7 +35,6 @@ export default function ScanTab() {
           </View>
         </View>
 
-
         {historyCount > 0 && (
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Your eye is worth</Text>

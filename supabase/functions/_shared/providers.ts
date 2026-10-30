@@ -45,7 +45,6 @@ export const MONTHLY_BUDGET_USD = 8; // per-user soft cap; friendly block at cap
 export const FREE_SCAN_LIMIT = 3;
 
 // Pure decision logic for the daily-rate-limit + monthly-AI-budget-cap gate (scan/index.ts
-// step 4). Extracted so the "at cap -> soft-block" behavior is unit-testable without a
 // Deno runtime or a live Postgres connection — record_ai_usage does the atomic increment,
 // this function only decides what the already-incremented counters mean.
 export interface UsageCheckInput {

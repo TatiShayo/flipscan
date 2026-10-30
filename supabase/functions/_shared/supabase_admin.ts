@@ -12,7 +12,6 @@ export function adminClient(): SupabaseClient {
   });
 }
 
-// Validate the bearer token and return the authenticated user id, or null. We use the
 // service client's getUser(jwt) which verifies the token server-side — never decode-and-trust.
 export async function getUserIdFromRequest(
   req: Request,

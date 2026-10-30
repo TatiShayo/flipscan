@@ -1,5 +1,4 @@
 // Security milestone — RLS + metering invariants (PLAYBOOK 2.2, BUILD_PROMPT threat model).
-//
 // A LIVE RLS deny-test (anon client of user A cannot read user B's rows) requires a running
 // Supabase/Postgres instance, which is a NEEDS HUMAN device/account step (see
 // PROJECT_STATE.md) — it cannot run in this headless environment. What we CAN do, and what

@@ -5,7 +5,6 @@
 // `expo export` bundle should never contain their names or values. Run via `npm run
 // secret-scan` (chains `expo export` first, see package.json) or directly against an
 // already-exported `dist/` when iterating.
-//
 // This scans for the SECRET NAMES (env var identifiers), not just example key values,
 // because the more dangerous leak is `process.env.ANTHROPIC_API_KEY` accidentally being
 // referenced from app code — Expo's bundler would have inlined the literal value into the

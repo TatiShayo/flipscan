@@ -148,7 +148,6 @@ export async function runMockScan(args: ScanArgs): Promise<ScanOutcome> {
     };
   }
 
-
   await delay(700); // identifying
 
   let identified =

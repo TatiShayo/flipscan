@@ -1,15 +1,5 @@
 // POST /scan — the wallet-guarding core edge function.
-//
 // Security order (each gate fails closed before any spend):
-//   1. JWT auth (never trust client user id)
-//   2. zod-validate body; server-side image-size re-check
-//   3. AI kill-switch
-//   4. daily rate limit + monthly budget cap (record_ai_usage, compare to caps)
-//   5. metering: consume a scan credit atomically (top-up before free); paywall if none
-//   6. 24h image-hash cache (skip Claude on a repeat image; refund the just-consumed credit)
-//   7. vision identify -> comps -> verdict
-//   8. persist scan row (service role), respond with generic errors on failure
-//
 // On any pipeline failure AFTER consuming a credit, we refund it so users aren't charged
 // a free scan for our outage.
 import { ScanRequestSchema, IdentifiedSchema, type ScanResult } from '../_shared/schema.ts';
@@ -36,11 +26,9 @@ Deno.serve(async (req: Request) => {
 
   const admin = adminClient();
 
-  // 1. auth
   const userId = await getUserIdFromRequest(req, admin);
   if (!userId) return fail('unauthorized', 'Sign-in required.');
 
-  // 2. validate
   let body: unknown;
   try {
     body = await req.json();
@@ -58,7 +46,6 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // 3. kill switch
   if (isAiKilled()) {
     return fail('ai_disabled', 'Scanning is temporarily unavailable. Try again soon.');
   }
@@ -79,7 +66,6 @@ Deno.serve(async (req: Request) => {
   };
 
   try {
-    // 4. daily rate limit + monthly budget (atomic increment, then compare)
     const { data: usage, error: usageErr } = await admin.rpc('record_ai_usage', {
       p_user_id: userId,
       p_cost_usd: EST_COST_PER_SCAN_USD,
@@ -98,7 +84,6 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 5. metering — consume a credit atomically
     const { data: credit, error: creditErr } = await admin.rpc('consume_scan_credit', {
       p_device_hash: device_hash,
       p_user_id: userId,
@@ -114,7 +99,6 @@ Deno.serve(async (req: Request) => {
     const freeUsed = c.free_used;
     const topupRemaining = c.topup_remaining;
 
-    // 6. 24h cache by image hash (primary image) or barcode key
     const imageHash =
       images.length > 0
         ? await sha256Hex(images[0])
@@ -131,7 +115,6 @@ Deno.serve(async (req: Request) => {
       // cache hit => we didn't call Claude; refund the credit we just consumed
       await refund();
     } else {
-      // 7. vision
       const { provider: vision } = makeVisionProvider();
       try {
         identified = await vision.identify({
@@ -171,7 +154,6 @@ Deno.serve(async (req: Request) => {
     });
     const verdict = verdictFor(breakdown, false);
 
-    // 8. persist
     const { data: inserted, error: insErr } = await admin
       .from('scans')
       .insert({

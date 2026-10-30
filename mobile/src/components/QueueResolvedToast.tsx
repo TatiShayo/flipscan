@@ -1,7 +1,6 @@
 // In-app toast for the offline queue (BUILD_PROMPT §13 "notify when the result lands").
 // No push infra exists yet (NEEDS HUMAN), so a queued scan that resolves on reconnect
 // surfaces as this tasteful slide-down banner instead of a system notification.
-//
 // Driven by useOfflineQueueProcessor's monotonic `resolvedCount`. The inner Toast is
 // remounted via `key` on each new batch, so every batch gets a fresh slide-in that
 // auto-dismisses — this remount pattern (same as VerdictStamp) sidesteps the

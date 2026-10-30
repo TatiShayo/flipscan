@@ -44,7 +44,6 @@ export function calculateBackoff(
   capMs = BACKOFF_CAP_MS,
 ): number {
   const exp = Math.min(capMs, baseMs * 2 ** Math.max(0, attempt));
-  // Add 10% jitter to prevent thundering herd
   const jitter = Math.floor(Math.random() * (exp * 0.1));
   return exp + jitter;
 }
@@ -210,7 +209,6 @@ export async function processQueue(): Promise<{ resolved: number; failed: number
     isProcessing = false;
   }
 }
-
 
 // Mount once (root layout): listens for connectivity changes and auto-drains the queue the
 // moment the device comes back online. Exposes `justResolved` for a one-shot in-app toast.

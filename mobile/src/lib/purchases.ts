@@ -125,4 +125,3 @@ export function hasActiveEntitlement(): Promise<boolean> {
 export function setEntitlementForTests(entitled: boolean): Promise<void> {
   return activeProvider.setEntitled(entitled);
 }
-

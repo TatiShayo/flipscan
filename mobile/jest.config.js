@@ -1,13 +1,10 @@
 // Jest configuration for FlipScan.
-//
 // Two projects:
-//   1. "logic" — pure TypeScript in supabase/functions/_shared (profit math, zod schemas,
 //      provider interfaces, url sanitizer) plus the schema-drift guard. These have no React
 //      Native / Expo dependency, so they run in a plain node environment with a minimal
 //      Babel transform (type-strip + ESM->CJS). We deliberately do NOT use the jest-expo
 //      preset here: its setup requires expo-modules-core (a native module) which isn't
 //      resolvable in a headless CI/node context, and these tests don't need any RN runtime.
-//   2. "rn" — React Native component/hook tests via the jest-expo preset. No such tests
 //      exist yet (the app screens are exercised by the logic layer + manual/on-device QA),
 //      but the project is wired so a component test can be dropped into mobile/src/**/__tests__
 //      without reconfiguring anything.

@@ -100,5 +100,4 @@ export const useScanStore = create<ScanState>()(
   ),
 );
 
-
 export type { ConditionGrade };

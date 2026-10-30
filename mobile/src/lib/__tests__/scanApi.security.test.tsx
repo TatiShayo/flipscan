@@ -1,5 +1,4 @@
 // SECURITY TEST — metering cannot be bypassed by clearing local storage.
-//
 // Threat model (BUILD_PROMPT security §, PROJECT_STATE NEEDS HUMAN): a user who wants more
 // free scans might clear app storage / reinstall, resetting the local zustand-persisted
 // `freeScansUsed` counter back to 0. The real edge function's authority is server-side
@@ -8,7 +7,6 @@
 // invariant). This test asserts the CLIENT half of that contract: when a real backend is
 // configured, requestScan() never consults or trusts the local counter to grant a scan —
 // it relays whatever the server decides, even when local state has been reset to zero.
-//
 // Imports jest/describe/it/expect explicitly from '@jest/globals' rather than relying on
 // ambient global typing (this repo's @types/jest install doesn't ship the `declare var
 // jest` global, only the `jest` namespace) — the explicit-import form is also the form
@@ -29,7 +27,6 @@ jest.mock('@/lib/supabase', () => ({
 
 // The offline/local mock pipeline is the ONLY code path that trusts local free-scan state.
 // If it ever ran while a real backend is configured, that would be the actual bypass this
-// test guards against — so we mock it out and assert it's never invoked below.
 // (babel-plugin-jest-hoist hoists these jest.mock() calls above the imports above at
 // compile time, so source order here doesn't matter to Jest — only to import/first lint.)
 jest.mock('@/lib/mockBackend', () => ({

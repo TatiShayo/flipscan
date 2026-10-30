@@ -2,7 +2,6 @@ import { describe, it, expect } from '@jest/globals';
 import { base64ByteLength } from '@/lib/sanitizer';
 import { ScanRequestSchema } from '@/types/scan';
 
-
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB
 
 describe('base64ByteLength', () => {
